@@ -5,8 +5,10 @@ import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Modal from "react-modal";
 import { ToastContainer, toast } from "react-toastify";
+import { Ban, X } from "lucide-react";
 import { CrudForm, DataTable, FilterBar } from "@/components/catalog";
 import { StatCard, Topbar, WorkspacePanel } from "@/components/dashboard";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "../../app/page.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 import { useCatalogData } from "./useCatalogData";
@@ -282,7 +284,10 @@ export function CatalogDashboard() {
       >
         <div className={styles.formModalHeader}>
           <button type="button" onClick={handleCloseModal} aria-label="Fechar formulario">
-            Fechar
+            <span className={styles.actionLabel}>
+              <X size={16} aria-hidden="true" />
+              <span>Fechar</span>
+            </span>
           </button>
         </div>
 
@@ -308,7 +313,10 @@ export function CatalogDashboard() {
         <div className={styles.detailsModalHeader}>
           <h3>Detalhes do registro</h3>
           <button type="button" onClick={handleCloseDetailsModal} aria-label="Fechar detalhes">
-            Fechar
+            <span className={styles.actionLabel}>
+              <X size={16} aria-hidden="true" />
+              <span>Fechar</span>
+            </span>
           </button>
         </div>
 
@@ -351,10 +359,20 @@ export function CatalogDashboard() {
           </p>
           <div className={styles.confirmModalActions}>
             <button type="button" onClick={handleCloseDeleteModal} disabled={isDeletingRow}>
-              Cancelar
+              <span className={styles.actionLabel}>
+                <Ban size={16} aria-hidden="true" />
+                <span>Cancelar</span>
+              </span>
             </button>
             <button type="button" onClick={handleConfirmDelete} disabled={isDeletingRow}>
-              {isDeletingRow ? "Excluindo..." : "Excluir"}
+              {isDeletingRow ? (
+                <span className={styles.buttonLoading}>
+                  <LoadingSpinner size={14} label="Excluindo" />
+                  <span>Excluindo...</span>
+                </span>
+              ) : (
+                "Excluir"
+              )}
             </button>
           </div>
         </div>

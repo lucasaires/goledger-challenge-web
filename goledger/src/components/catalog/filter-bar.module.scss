@@ -38,12 +38,13 @@
     color: #ffffff;
     font-weight: 600;
     cursor: pointer;
-
-    &:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
   }
+}
+
+.buttonLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .searchBox,

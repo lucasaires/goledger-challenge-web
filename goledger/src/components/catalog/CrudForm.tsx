@@ -4,6 +4,8 @@ import { useEffect, useMemo } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Ban } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "./crud-form.module.scss";
 
 type Field = {
@@ -129,10 +131,20 @@ export function CrudForm({
               onCancel?.();
             }}
           >
-            {cancelLabel}
+            <span className={styles.actionLabel}>
+              <Ban size={16} aria-hidden="true" />
+              <span>{cancelLabel}</span>
+            </span>
           </button>
           <button type="submit" className={styles.primary} disabled={isSubmitting}>
-            {isSubmitting ? "Salvando..." : submitLabel}
+            {isSubmitting ? (
+              <span className={styles.buttonLoading}>
+                <LoadingSpinner size={14} label="Salvando" />
+                <span>Salvando...</span>
+              </span>
+            ) : (
+              submitLabel
+            )}
           </button>
         </div>
       </form>

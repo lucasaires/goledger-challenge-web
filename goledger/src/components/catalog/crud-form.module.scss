@@ -81,6 +81,18 @@
   }
 }
 
+.buttonLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .primary {
   background: #111827;
   color: #ffffff;

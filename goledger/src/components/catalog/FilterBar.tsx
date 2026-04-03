@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "./filter-bar.module.scss";
 
 export type CatalogFilterValues = {
@@ -56,7 +57,14 @@ export function FilterBar({ searchPlaceholder, categories, isLoading = false, on
       </div>
 
       <button type="submit" disabled={isLoading}>
-        {isLoading ? "Filtrando..." : "Aplicar filtros"}
+        {isLoading ? (
+          <span className={styles.buttonLoading}>
+            <LoadingSpinner size={14} label="Filtrando" />
+            <span>Filtrando...</span>
+          </span>
+        ) : (
+          "Aplicar filtros"
+        )}
       </button>
     </form>
   );

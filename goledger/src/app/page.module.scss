@@ -68,6 +68,12 @@
   }
 }
 
+.actionLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .confirmModal {
   width: min(440px, 100%);
   background: #ffffff;
@@ -226,6 +232,12 @@
     background: #dc2626;
     color: #ffffff;
   }
+}
+
+.buttonLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @include mobile {

@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import ReactDataTable, { type TableColumn } from "react-data-table-component";
+import { Edit3, Trash2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "./data-table.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 
@@ -48,25 +50,31 @@ export function DataTable({
           <div className={styles.actions}>
             <button
               type="button"
+              className={styles.actionButton}
+              title="Editar"
+              aria-label={`Editar registro ${row.values.title}`}
               onClick={(event) => {
                 event.stopPropagation();
                 onEdit?.(row);
               }}
             >
-              Editar
+              <Edit3 size={16} aria-hidden="true" />
             </button>
             <button
               type="button"
+              className={styles.actionButton}
+              title="Excluir"
+              aria-label={`Excluir registro ${row.values.title}`}
               onClick={(event) => {
                 event.stopPropagation();
                 onDelete?.(row);
               }}
             >
-              Excluir
+              <Trash2 size={16} aria-hidden="true" />
             </button>
           </div>
         ),
-        width: "180px",
+        width: "112px",
       },
     ],
     [columns, onDelete, onEdit],
@@ -96,6 +104,12 @@ export function DataTable({
           onChangePage={onPageChange}
           onChangeRowsPerPage={onRowsPerPageChange}
           progressPending={isLoading}
+          progressComponent={
+            <div className={styles.loadingState} role="status" aria-live="polite">
+              <LoadingSpinner size={18} label="Carregando registros" />
+              <span>Carregando registros...</span>
+            </div>
+          }
           onRowClicked={onRowClick}
           highlightOnHover
           pointerOnHover
