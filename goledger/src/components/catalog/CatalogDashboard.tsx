@@ -12,6 +12,12 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "../../app/page.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 import { useCatalogData } from "./useCatalogData";
+import {
+  buildCreateFields,
+  catalogAssetCreationOptions,
+  extractCreationOptionsFromRows,
+  type CatalogAssetCreationType,
+} from "./catalog-create-forms";
 
 const catalogColumns = ["Nome", "Categoria", "Status"];
 
@@ -26,6 +32,18 @@ const detailLabelByKey: Record<string, string> = {
   releaseDate: "Data de lancamento",
   year: "Ano",
 };
+
+function getCreationTypeLabel(assetType: CatalogAssetCreationType | null) {
+  if (!assetType) {
+    return "registro";
+  }
+
+  return catalogAssetCreationOptions.find((option) => option.value === assetType)?.label ?? "registro";
+}
+
+function getRecordLabel(values: Record<string, string>) {
+  return values.title ?? values.number ?? values.episodeNumber ?? "registro";
+}
 
 function formatDetailKey(key: string) {
   if (detailLabelByKey[key]) {
@@ -57,6 +75,8 @@ function formatDetailValue(key: string, value: string) {
 export function CatalogDashboard() {
   const [editingRow, setEditingRow] = useState<CatalogRecord | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isCreateTypeModalOpen, setIsCreateTypeModalOpen] = useState(false);
+  const [createAssetType, setCreateAssetType] = useState<CatalogAssetCreationType | null>(null);
   const [selectedRow, setSelectedRow] = useState<CatalogRecord | null>(null);
   const [rowToDelete, setRowToDelete] = useState<CatalogRecord | null>(null);
   const [isDeletingRow, setIsDeletingRow] = useState(false);
@@ -75,6 +95,7 @@ export function CatalogDashboard() {
     handleDelete,
     setEditingStatusMessage,
     setCreateStatusMessage,
+    creationOptions: apiCreationOptions,
   } = useCatalogData();
 
   useEffect(() => {
@@ -85,19 +106,51 @@ export function CatalogDashboard() {
     void handleFilter({ term: "", category: "all" });
   }, [handleFilter]);
 
+  const creationOptions = useMemo(() => {
+    const rowOptions = extractCreationOptionsFromRows(rows);
+
+    return {
+      tvShows: [...apiCreationOptions.tvShows, ...rowOptions.tvShows].filter((option, index, list) => (
+        list.findIndex((candidate) => candidate.value === option.value) === index
+      )),
+      seasons: [...apiCreationOptions.seasons, ...rowOptions.seasons].filter((option, index, list) => (
+        list.findIndex((candidate) => candidate.value === option.value) === index
+      )),
+    };
+  }, [apiCreationOptions, rows]);
+
+  const activeFormAssetType = (editingRow?.assetType as CatalogAssetCreationType | undefined) ?? createAssetType;
+
+  const formFields = useMemo(() => {
+    if (!activeFormAssetType) {
+      return [];
+    }
+
+    return buildCreateFields(activeFormAssetType, creationOptions);
+  }, [activeFormAssetType, creationOptions]);
+
+  const formValues = editingRow?.values;
+  const isEditingMode = Boolean(editingRow);
+  const formLabel = isEditingMode ? "Atualizar" : "Salvar";
+  const cancelLabel = isEditingMode ? "Cancelar" : "Limpar";
+
   const handleCreate = async (values: Record<string, string>) => {
+    const recordLabel = getRecordLabel(values);
+
     try {
-      const result = await handleCreateOrUpdate(values, editingRow);
+      const result = await handleCreateOrUpdate(values, editingRow, createAssetType ?? undefined);
 
       if (result.mode === "updated") {
-        toast.success(`Registro ${values.title} atualizado com sucesso.`);
+        toast.success(`Registro ${recordLabel} atualizado com sucesso.`);
         setIsFormModalOpen(false);
         setEditingRow(null);
+        setCreateAssetType(null);
         return;
       }
-      toast.success(`Registro ${values.title} criado com sucesso.`);
+      toast.success(`Registro ${recordLabel} criado com sucesso.`);
       setIsFormModalOpen(false);
       setEditingRow(null);
+      setCreateAssetType(null);
     } catch {
       toast.error("Falha ao salvar registro.");
       throw new Error("Falha ao salvar registro.");
@@ -112,13 +165,50 @@ export function CatalogDashboard() {
 
   const handleOpenCreateModal = () => {
     setEditingRow(null);
+    setIsCreateTypeModalOpen(true);
+    setIsFormModalOpen(false);
+    setCreateAssetType(null);
+    setCreateStatusMessage();
+  };
+
+  const handleSelectCreateType = (assetType: CatalogAssetCreationType) => {
+    setCreateAssetType(assetType);
+    setIsCreateTypeModalOpen(false);
     setIsFormModalOpen(true);
     setCreateStatusMessage();
   };
 
-  const handleCloseModal = () => {
+  const handleCloseCreateTypeModal = () => {
+    setIsCreateTypeModalOpen(false);
+  };
+
+  const handleReturnToTypeSelection = () => {
+    if (isEditingMode) {
+      handleCloseModal();
+      return;
+    }
+
     setIsFormModalOpen(false);
+    setCreateAssetType(null);
+    setIsCreateTypeModalOpen(true);
+    setCreateStatusMessage();
+  };
+
+  const handleCancelCreateFlow = () => {
+    setIsFormModalOpen(false);
+    setIsCreateTypeModalOpen(false);
     setEditingRow(null);
+    setCreateAssetType(null);
+  };
+
+  const handleCloseModal = () => {
+    if (isEditingMode) {
+      setIsFormModalOpen(false);
+      setEditingRow(null);
+      return;
+    }
+
+    handleCancelCreateFlow();
   };
 
   const handleOpenDetailsModal = (row: CatalogRecord) => {
@@ -162,33 +252,6 @@ export function CatalogDashboard() {
       setIsDeletingRow(false);
     }
   };
-
-  const formValues = editingRow?.values;
-  const formLabel = editingRow ? "Atualizar" : "Salvar";
-  const cancelLabel = editingRow ? "Cancelar" : "Limpar";
-  const formFields = useMemo(
-    () => [
-      {
-        label: "Titulo",
-        name: "title",
-        placeholder: "Digite o titulo",
-        readOnly: Boolean(editingRow),
-      },
-      {
-        label: "Descricao",
-        name: "description",
-        placeholder: "Digite a descricao",
-        as: "textarea" as const,
-      },
-      {
-        label: "Idade recomendada",
-        name: "recommendedAge",
-        placeholder: "Ex: 14",
-        type: "number",
-      },
-    ],
-    [editingRow],
-  );
 
   const detailEntries = useMemo(() => {
     if (!selectedRow) {
@@ -276,6 +339,26 @@ export function CatalogDashboard() {
       </main>
 
       <Modal
+        isOpen={isCreateTypeModalOpen}
+        onRequestClose={handleCloseCreateTypeModal}
+        contentLabel="Selecionar tipo de registro"
+        className={styles.confirmModal}
+        overlayClassName={styles.formModalOverlay}
+      >
+        <div className={styles.confirmModalContent}>
+          <h3>Novo registro</h3>
+          <p>Escolha o tipo de asset para abrir o formulario correto.</p>
+          <div className={styles.selectionModalActions}>
+            {catalogAssetCreationOptions.map((option) => (
+              <button key={option.value} type="button" className={styles.selectionModalButton} onClick={() => handleSelectCreateType(option.value)}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         isOpen={isFormModalOpen}
         onRequestClose={handleCloseModal}
         contentLabel="Formulario de cadastro"
@@ -283,23 +366,23 @@ export function CatalogDashboard() {
         overlayClassName={styles.formModalOverlay}
       >
         <div className={styles.formModalHeader}>
-          <button type="button" onClick={handleCloseModal} aria-label="Fechar formulario">
+          <button type="button" onClick={handleCloseModal} aria-label="Cancelar formulario">
             <span className={styles.actionLabel}>
               <X size={16} aria-hidden="true" />
-              <span>Fechar</span>
+              <span>{isEditingMode ? "Fechar" : "Cancelar"}</span>
             </span>
           </button>
         </div>
 
         <CrudForm
-          title={editingRow ? `Editando ${editingRow.values.title}` : "Formulario de cadastro"}
-          description="Base para criar e editar assets da aplicacao a partir da API."
+          title={editingRow ? `Editando ${editingRow.values.title}` : `Novo ${getCreationTypeLabel(createAssetType)}`}
+          description={editingRow ? "Atualize os dados do registro selecionado." : "Base para criar assets da aplicacao a partir da API."}
           fields={formFields}
           initialValues={formValues}
           submitLabel={formLabel}
-          cancelLabel={cancelLabel}
+          cancelLabel={isEditingMode ? cancelLabel : "Voltar"}
           onSubmit={handleCreate}
-          onCancel={handleCloseModal}
+          onCancel={handleReturnToTypeSelection}
         />
       </Modal>
 

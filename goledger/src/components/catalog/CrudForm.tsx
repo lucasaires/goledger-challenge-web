@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,14 +8,15 @@ import { Ban } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "./crud-form.module.scss";
 
-type Field = {
+export type Field = {
   label: string;
   name: string;
   placeholder: string;
   type?: string;
-  as?: "input" | "textarea";
+  as?: "input" | "textarea" | "select" | "search-select";
   required?: boolean;
   readOnly?: boolean;
+  options?: Array<{ label: string; value: string }>;
 };
 
 type CrudFormValues = Record<string, string>;
@@ -56,6 +57,8 @@ export function CrudForm({
   onCancel,
 }: CrudFormProps) {
   const schema = useMemo(() => buildSchema(fields), [fields]);
+  const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
+  const [openSearchField, setOpenSearchField] = useState<string | null>(null);
 
   const defaultValues = useMemo(
     () =>
@@ -70,6 +73,8 @@ export function CrudForm({
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CrudFormValues>({
     resolver: zodResolver(schema) as Resolver<CrudFormValues>,
@@ -79,6 +84,8 @@ export function CrudForm({
 
   useEffect(() => {
     reset(initialValues ?? defaultValues);
+    setSearchQueries({});
+    setOpenSearchField(null);
   }, [defaultValues, initialValues, reset]);
 
   const submitForm = handleSubmit(async (values) => {
@@ -96,9 +103,23 @@ export function CrudForm({
       <form className={styles.form} onSubmit={submitForm} noValidate>
         {fields.map((field) => {
           const fieldError = errors[field.name];
+          const selectedValue = watch(field.name);
+          const selectedOption = field.options?.find((option) => option.value === selectedValue);
+          const searchValue = searchQueries[field.name] ?? "";
+          const isSearchOpen = openSearchField === field.name;
+          const filteredOptions = field.options?.filter((option) => {
+            const query = searchValue.trim().toLowerCase();
+
+            if (!query) {
+              return true;
+            }
+
+            return option.label.toLowerCase().includes(query) || option.value.toLowerCase().includes(query);
+          }) ?? [];
+          const inputId = field.as === "search-select" ? `${field.name}-search` : field.name;
 
           return (
-            <label key={field.name} htmlFor={field.name}>
+            <label key={field.name} htmlFor={inputId}>
               <span>{field.label}</span>
               {field.as === "textarea" ? (
                 <textarea
@@ -108,6 +129,69 @@ export function CrudForm({
                   readOnly={field.readOnly}
                   {...register(field.name)}
                 />
+              ) : field.as === "search-select" ? (
+                <div className={styles.searchSelect}>
+                  <input
+                    id={`${field.name}-search`}
+                    placeholder={field.placeholder}
+                    type="text"
+                    value={searchValue || selectedOption?.label || ""}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      setOpenSearchField(field.name);
+                      setSearchQueries((current) => ({ ...current, [field.name]: nextValue }));
+                    }}
+                    onFocus={() => {
+                      setOpenSearchField(field.name);
+                      setSearchQueries((current) => ({
+                        ...current,
+                        [field.name]: current[field.name] ?? selectedOption?.label ?? "",
+                      }));
+                    }}
+                    onBlur={() => {
+                      window.setTimeout(() => {
+                        setOpenSearchField((current) => (current === field.name ? null : current));
+                      }, 120);
+                    }}
+                    readOnly={field.readOnly}
+                    autoComplete="off"
+                  />
+                  <input type="hidden" {...register(field.name)} />
+                  {isSearchOpen && filteredOptions.length > 0 ? (
+                    <div className={styles.searchSelectOptions} role="listbox" aria-label={field.label}>
+                      {filteredOptions.slice(0, 8).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={styles.searchSelectOption}
+                          onClick={() => {
+                            setValue(field.name, option.value, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+                            setSearchQueries((current) => ({ ...current, [field.name]: option.label }));
+                            setOpenSearchField(null);
+                          }}
+                        >
+                          <span>{option.label}</span>
+                          <small>{option.value}</small>
+                        </button>
+                      ))}
+                    </div>
+                  ) : searchValue ? (
+                    <div className={styles.searchSelectEmpty}>Nenhum resultado encontrado.</div>
+                  ) : null}
+                </div>
+              ) : field.as === "select" ? (
+                <select
+                  id={field.name}
+                  disabled={field.readOnly}
+                  {...register(field.name)}
+                >
+                  <option value="">Selecione</option>
+                  {field.options?.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               ) : (
                 <input
                   id={field.name}

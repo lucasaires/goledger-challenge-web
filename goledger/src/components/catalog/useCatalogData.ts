@@ -1,12 +1,17 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goledger";
 import {
   buildCatalogSearchSelector,
   classifyAssetType,
-  normalizeRows,
   parseRecommendedAge,
+  normalizeRows,
   parseSearchResult,
 } from "@/lib/goledger/catalog-mappers";
+import {
+  buildCreatePayload,
+  type CatalogAssetOption,
+  type CatalogAssetCreationType,
+} from "./catalog-create-forms";
 import type { CatalogRecord } from "@/lib/goledger";
 import type { CatalogFilterValues } from "@/components/catalog/FilterBar";
 
@@ -44,6 +49,13 @@ function parseSearchMetadata(raw: unknown) {
   };
 }
 
+function optionFromRecord(record: Record<string, unknown>) {
+  const label = String(record.title ?? record.name ?? record.id ?? "");
+  const value = String(record["@key"] ?? record.id ?? "");
+
+  return label && value ? { label, value } : null;
+}
+
 export function useCatalogData() {
   const [rows, setRows] = useState<CatalogRecord[]>([]);
   const [isFiltering, setIsFiltering] = useState(false);
@@ -52,6 +64,13 @@ export function useCatalogData() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
   const [totalRows, setTotalRows] = useState(0);
+  const [creationOptions, setCreationOptions] = useState<{
+    tvShows: CatalogAssetOption[];
+    seasons: CatalogAssetOption[];
+  }>({
+    tvShows: [],
+    seasons: [],
+  });
   const latestRequestId = useRef(0);
   const pageBookmarksRef = useRef<Record<number, string>>({ 1: "" });
 
@@ -88,6 +107,31 @@ export function useCatalogData() {
       { label: "Watchlists na pagina", value: pageWatchlists },
     ];
   }, [rows]);
+
+  const loadCreationOptions = useCallback(async () => {
+    try {
+      const [tvShowResponse, seasonResponse] = await Promise.all([
+        searchAssets({ selector: { "@assetType": { $in: ["tvShows"] } }, limit: 200 }),
+        searchAssets({ selector: { "@assetType": { $in: ["seasons"] } }, limit: 200 }),
+      ]);
+
+      const tvShows = parseSearchResult(tvShowResponse)
+        .map(optionFromRecord)
+        .filter((item): item is CatalogAssetOption => item !== null);
+
+      const seasons = parseSearchResult(seasonResponse)
+        .map(optionFromRecord)
+        .filter((item): item is CatalogAssetOption => item !== null);
+
+      setCreationOptions({ tvShows, seasons });
+    } catch {
+      setCreationOptions({ tvShows: [], seasons: [] });
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCreationOptions();
+  }, [loadCreationOptions]);
 
   const loadPage = useCallback(async (
     page: number,
@@ -189,10 +233,11 @@ export function useCatalogData() {
   const handleCreateOrUpdate = useCallback(async (
     values: CatalogFormValues,
     editingRow: CatalogRecord | null,
+    createAssetType?: CatalogAssetCreationType,
   ) => {
-    const recommendedAge = parseRecommendedAge(values.recommendedAge);
-
     if (editingRow) {
+      const recommendedAge = parseRecommendedAge(values.recommendedAge);
+
       await updateAsset({
         "@assetType": editingRow.assetType,
         title: values.title,
@@ -221,29 +266,29 @@ export function useCatalogData() {
       return { mode: "updated" as const, title: values.title };
     }
 
-    await createAsset({
-      "@assetType": "tvShows",
-      title: values.title,
-      description: values.description,
-      recommendedAge,
-    });
+    const assetType = createAssetType ?? "tvShows";
+    const payload = buildCreatePayload(assetType, values);
+
+    await createAsset(payload);
 
     setRows((currentRows) => [
       {
-        id: `tvShows:${values.title}:${Date.now()}`,
-        assetType: "tvShows",
-        cells: [values.title, "Serie", "Ativo"],
-        values: {
-          title: values.title,
-          description: values.description,
-          recommendedAge: values.recommendedAge,
-        },
+        id: `${assetType}:${values.title ?? values.number ?? values.episodeNumber ?? Date.now()}`,
+        assetType,
+        cells: [
+          values.title ?? values.number ?? values.episodeNumber ?? "-",
+          assetType,
+          "Ativo",
+        ],
+        values: Object.fromEntries(
+          Object.entries(values).filter(([, value]) => value !== undefined),
+        ) as Record<string, string>,
       },
       ...currentRows,
     ]);
     setTotalRows((currentTotalRows) => currentTotalRows + 1);
 
-    setStatusMessage(`Registro ${values.title} criado com sucesso na blockchain.`);
+    setStatusMessage(`Registro ${values.title ?? values.number ?? values.episodeNumber} criado com sucesso na blockchain.`);
     return { mode: "created" as const, title: values.title };
   }, []);
 
@@ -282,5 +327,6 @@ export function useCatalogData() {
     handleDelete,
     setEditingStatusMessage,
     setCreateStatusMessage,
+    creationOptions,
   };
 }
