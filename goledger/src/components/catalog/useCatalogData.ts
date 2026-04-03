@@ -1,87 +1,163 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goledger";
 import {
+  buildCatalogSearchSelector,
   classifyAssetType,
-  filterRowsByTerm,
-  getAssetTypesByCategory,
   normalizeRows,
   parseRecommendedAge,
   parseSearchResult,
-  uniqueAssets,
 } from "@/lib/goledger/catalog-mappers";
 import type { CatalogRecord } from "@/lib/goledger";
 import type { CatalogFilterValues } from "@/components/catalog/FilterBar";
 
 export type CatalogFormValues = Record<string, string>;
 
+type SearchResponse = {
+  metadata?: {
+    bookmark?: string;
+    fetched_records_count?: number;
+  } | null;
+  result?: unknown;
+};
+
+const DEFAULT_FILTERS: CatalogFilterValues = {
+  term: "",
+  category: "all",
+};
+
+const DEFAULT_ROWS_PER_PAGE = 10;
+
+function parseSearchMetadata(raw: unknown) {
+  if (!raw || typeof raw !== "object") {
+    return { bookmark: "", fetchedRecordsCount: 0 };
+  }
+
+  const metadata = (raw as SearchResponse).metadata;
+
+  if (!metadata) {
+    return { bookmark: "", fetchedRecordsCount: 0 };
+  }
+
+  return {
+    bookmark: metadata.bookmark ?? "",
+    fetchedRecordsCount: metadata.fetched_records_count ?? 0,
+  };
+}
+
 export function useCatalogData() {
   const [rows, setRows] = useState<CatalogRecord[]>([]);
   const [isFiltering, setIsFiltering] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Carregando registros da API...");
-  const latestFilterRequest = useRef(0);
+  const [activeFilters, setActiveFilters] = useState<CatalogFilterValues>(DEFAULT_FILTERS);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
+  const [totalRows, setTotalRows] = useState(0);
+  const latestRequestId = useRef(0);
+  const pageBookmarksRef = useRef<Record<number, string>>({ 1: "" });
 
   const stats = useMemo(() => {
-    let totalSeries = 0;
-    let totalSeasons = 0;
-    let totalEpisodes = 0;
-    let activeWatchlists = 0;
+    let pageSeries = 0;
+    let pageSeasons = 0;
+    let pageEpisodes = 0;
+    let pageWatchlists = 0;
 
     for (const row of rows) {
       const bucket = classifyAssetType(row.assetType);
-      const status = (row.cells[2] ?? "").toLowerCase();
 
       if (bucket === "series") {
-        totalSeries += 1;
+        pageSeries += 1;
       }
 
       if (bucket === "season") {
-        totalSeasons += 1;
+        pageSeasons += 1;
       }
 
       if (bucket === "episode") {
-        totalEpisodes += 1;
+        pageEpisodes += 1;
       }
 
-      if (bucket === "watchlist" && status.includes("ativo")) {
-        activeWatchlists += 1;
+      if (bucket === "watchlist") {
+        pageWatchlists += 1;
       }
     }
 
     return [
-      { label: "Total de series", value: totalSeries },
-      { label: "Total de temporadas", value: totalSeasons },
-      { label: "Total de episodios", value: totalEpisodes },
-      { label: "Watchlists ativas", value: activeWatchlists },
+      { label: "Series na pagina", value: pageSeries },
+      { label: "Temporadas na pagina", value: pageSeasons },
+      { label: "Episodios na pagina", value: pageEpisodes },
+      { label: "Watchlists na pagina", value: pageWatchlists },
     ];
   }, [rows]);
 
-  const handleFilter = useCallback(async ({ term, category }: CatalogFilterValues) => {
-    const requestId = ++latestFilterRequest.current;
-    const typesToSearch = getAssetTypesByCategory({ term, category });
+  const loadPage = useCallback(async (
+    page: number,
+    pageSize: number,
+    filters: CatalogFilterValues,
+    resetBookmarks = false,
+  ) => {
+    const requestId = ++latestRequestId.current;
+    const normalizedPage = Math.max(1, page);
+
+    if (resetBookmarks) {
+      pageBookmarksRef.current = { 1: "" };
+    }
+
+    pageBookmarksRef.current[1] = pageBookmarksRef.current[1] ?? "";
+
+    const selector = buildCatalogSearchSelector(filters);
+    const knownPages = Object.keys(pageBookmarksRef.current)
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0 && value < normalizedPage)
+      .sort((left, right) => left - right);
+
+    let bookmark = pageBookmarksRef.current[knownPages[knownPages.length - 1] ?? 1] ?? "";
+    const startPage = knownPages[knownPages.length - 1] ?? 1;
 
     try {
       setIsFiltering(true);
 
-      const responses = await Promise.all(
-        typesToSearch.map((assetType) =>
-          searchAssets({ selector: { "@assetType": assetType } }),
-        ),
-      );
+      for (let current = startPage; current < normalizedPage; current += 1) {
+        const intermediateResponse = await searchAssets({
+          selector,
+          limit: pageSize,
+          bookmark,
+        });
 
-      if (requestId !== latestFilterRequest.current) {
+        if (requestId !== latestRequestId.current) {
+          return;
+        }
+
+        const intermediateMetadata = parseSearchMetadata(intermediateResponse);
+        pageBookmarksRef.current[current + 1] = intermediateMetadata.bookmark;
+        bookmark = intermediateMetadata.bookmark;
+      }
+
+      const response = await searchAssets({
+        selector,
+        limit: pageSize,
+        bookmark: pageBookmarksRef.current[normalizedPage] ?? bookmark,
+      });
+
+      if (requestId !== latestRequestId.current) {
         return;
       }
 
-      const parsedAssets = uniqueAssets(
-        responses.flatMap((response) => parseSearchResult(response)),
-      );
-      const normalizedRows = normalizeRows(parsedAssets);
-      const filteredRows = filterRowsByTerm(normalizedRows, term);
+      const metadata = parseSearchMetadata(response);
+      const normalizedRows = normalizeRows(parseSearchResult(response));
 
-      setRows(filteredRows);
-      setStatusMessage(`${filteredRows.length} registro(s) encontrados.`);
+      pageBookmarksRef.current[normalizedPage + 1] = metadata.bookmark;
+      setRows(normalizedRows);
+      setActiveFilters(filters);
+      setCurrentPage(normalizedPage);
+      setRowsPerPage(pageSize);
+      setTotalRows((normalizedPage - 1) * pageSize + normalizedRows.length + (metadata.bookmark ? 1 : 0));
+      setStatusMessage(
+        filters.term.trim()
+          ? `Pagina ${normalizedPage}: ${normalizedRows.length} registro(s) encontrados.`
+          : `Pagina ${normalizedPage}: ${normalizedRows.length} registro(s) carregados.`,
+      );
     } catch (error) {
-      if (requestId !== latestFilterRequest.current) {
+      if (requestId !== latestRequestId.current) {
         return;
       }
 
@@ -92,11 +168,23 @@ export function useCatalogData() {
       );
       throw error;
     } finally {
-      if (requestId === latestFilterRequest.current) {
+      if (requestId === latestRequestId.current) {
         setIsFiltering(false);
       }
     }
   }, []);
+
+  const handleFilter = useCallback(async (filters: CatalogFilterValues) => {
+    await loadPage(1, rowsPerPage, filters, true);
+  }, [loadPage, rowsPerPage]);
+
+  const handlePageChange = useCallback(async (page: number) => {
+    await loadPage(page, rowsPerPage, activeFilters);
+  }, [activeFilters, loadPage, rowsPerPage]);
+
+  const handleRowsPerPageChange = useCallback(async (nextRowsPerPage: number) => {
+    await loadPage(1, nextRowsPerPage, activeFilters, true);
+  }, [activeFilters, loadPage]);
 
   const handleCreateOrUpdate = useCallback(async (
     values: CatalogFormValues,
@@ -153,6 +241,7 @@ export function useCatalogData() {
       },
       ...currentRows,
     ]);
+    setTotalRows((currentTotalRows) => currentTotalRows + 1);
 
     setStatusMessage(`Registro ${values.title} criado com sucesso na blockchain.`);
     return { mode: "created" as const, title: values.title };
@@ -165,6 +254,7 @@ export function useCatalogData() {
     });
 
     setRows((currentRows) => currentRows.filter((currentRow) => currentRow.id !== row.id));
+    setTotalRows((currentTotalRows) => Math.max(0, currentTotalRows - 1));
     setStatusMessage(`Registro ${row.values.title} removido com sucesso.`);
     return { title: row.values.title, id: row.id };
   }, []);
@@ -182,7 +272,12 @@ export function useCatalogData() {
     isFiltering,
     statusMessage,
     stats,
+    currentPage,
+    rowsPerPage,
+    totalRows,
     handleFilter,
+    handlePageChange,
+    handleRowsPerPageChange,
     handleCreateOrUpdate,
     handleDelete,
     setEditingStatusMessage,

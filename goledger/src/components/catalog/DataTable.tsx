@@ -7,12 +7,33 @@ type DataTableProps = {
   caption: string;
   columns: string[];
   rows: CatalogRecord[];
+  totalRows?: number;
+  currentPage?: number;
+  rowsPerPage?: number;
+  isLoading?: boolean;
+  useServerPagination?: boolean;
+  onPageChange?: (page: number) => void | Promise<void>;
+  onRowsPerPageChange?: (newRowsPerPage: number, currentPage: number) => void | Promise<void>;
   onRowClick?: (row: CatalogRecord) => void;
   onEdit?: (row: CatalogRecord) => void;
   onDelete?: (row: CatalogRecord) => void;
 };
 
-export function DataTable({ caption, columns, rows, onRowClick, onEdit, onDelete }: DataTableProps) {
+export function DataTable({
+  caption,
+  columns,
+  rows,
+  totalRows,
+  currentPage,
+  rowsPerPage,
+  isLoading = false,
+  useServerPagination = false,
+  onPageChange,
+  onRowsPerPageChange,
+  onRowClick,
+  onEdit,
+  onDelete,
+}: DataTableProps) {
   const tableColumns = useMemo<TableColumn<CatalogRecord>[]>(
     () => [
       ...columns.map((column, index) => ({
@@ -67,8 +88,14 @@ export function DataTable({ caption, columns, rows, onRowClick, onEdit, onDelete
           data={rows}
           keyField="id"
           pagination
-          paginationPerPage={10}
+          paginationServer={useServerPagination}
+          paginationTotalRows={totalRows}
+          paginationDefaultPage={currentPage}
+          paginationPerPage={rowsPerPage ?? 10}
           paginationRowsPerPageOptions={[10, 25, 50, 100]}
+          onChangePage={onPageChange}
+          onChangeRowsPerPage={onRowsPerPageChange}
+          progressPending={isLoading}
           onRowClicked={onRowClick}
           highlightOnHover
           pointerOnHover

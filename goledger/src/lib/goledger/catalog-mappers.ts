@@ -9,6 +9,10 @@ export const assetTypeAliases = {
   watchlist: ["watchlists", "watchlist"],
 } as const;
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function mapCategoryToAssetType(category: string) {
   const normalized = category.toLowerCase();
 
@@ -144,4 +148,31 @@ export function classifyAssetType(assetType: string) {
 export function getAssetTypesByCategory(filters: CatalogFilterValues) {
   const bucket = mapCategoryToAssetType(filters.category);
   return assetTypeAliases[bucket];
+}
+
+export function buildCatalogSearchSelector(filters: CatalogFilterValues) {
+  const types = getAssetTypesByCategory(filters);
+  const normalizedTerm = filters.term.trim();
+
+  if (!normalizedTerm) {
+    return {
+      "@assetType": { $in: types },
+    };
+  }
+
+  const regex = `(?i).*${escapeRegExp(normalizedTerm)}.*`;
+
+  return {
+    $and: [
+      {
+        "@assetType": { $in: types },
+      },
+      {
+        $or: [
+          { title: { $regex: regex } },
+          { description: { $regex: regex } },
+        ],
+      },
+    ],
+  };
 }

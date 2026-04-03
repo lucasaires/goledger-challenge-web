@@ -22,7 +22,12 @@ export function CatalogDashboard() {
     isFiltering,
     statusMessage,
     stats,
+    currentPage,
+    rowsPerPage,
+    totalRows,
     handleFilter,
+    handlePageChange,
+    handleRowsPerPageChange,
     handleCreateOrUpdate,
     handleDelete,
     setEditingStatusMessage,
@@ -171,6 +176,13 @@ export function CatalogDashboard() {
               caption="Lista de registros"
               columns={catalogColumns}
               rows={rows}
+              totalRows={totalRows}
+              currentPage={currentPage}
+              rowsPerPage={rowsPerPage}
+              isLoading={isFiltering}
+              useServerPagination
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPageChange}
               onRowClick={handleOpenDetailsModal}
               onEdit={handleEdit}
               onDelete={handleRequestDelete}
