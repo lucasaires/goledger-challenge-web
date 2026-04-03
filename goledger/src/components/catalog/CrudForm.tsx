@@ -1,3 +1,9 @@
+"use client";
+
+import { useMemo } from "react";
+import { useForm, type Resolver } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import styles from "./crud-form.module.scss";
 
 type Field = {
@@ -6,15 +12,60 @@ type Field = {
   placeholder: string;
   type?: string;
   as?: "input" | "textarea";
+  required?: boolean;
 };
+
+type CrudFormValues = Record<string, string>;
 
 type CrudFormProps = {
   title: string;
   description: string;
   fields: Field[];
+  onSubmit?: (values: CrudFormValues) => void;
 };
 
-export function CrudForm({ title, description, fields }: CrudFormProps) {
+function buildSchema(fields: Field[]) {
+  const shape = Object.fromEntries(
+    fields.map((field) => {
+      const schema = field.required === false
+        ? z.string().trim().optional().transform((value) => value ?? "")
+        : z.string().trim().min(1, `${field.label} e obrigatorio`);
+
+      return [field.name, schema];
+    }),
+  );
+
+  return z.object(shape as Record<string, z.ZodTypeAny>);
+}
+
+export function CrudForm({ title, description, fields, onSubmit }: CrudFormProps) {
+  const schema = useMemo(() => buildSchema(fields), [fields]);
+
+  const defaultValues = useMemo(
+    () =>
+      fields.reduce<CrudFormValues>((accumulator, field) => {
+        accumulator[field.name] = "";
+        return accumulator;
+      }, {}),
+    [fields],
+  );
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CrudFormValues>({
+    resolver: zodResolver(schema) as Resolver<CrudFormValues>,
+    defaultValues,
+    mode: "onTouched",
+  });
+
+  const submitForm = handleSubmit((values) => {
+    onSubmit?.(values);
+    reset(defaultValues);
+  });
+
   return (
     <section className={styles.formCard} aria-label={title}>
       <div className={styles.header}>
@@ -22,32 +73,39 @@ export function CrudForm({ title, description, fields }: CrudFormProps) {
         <p>{description}</p>
       </div>
 
-      <form className={styles.form}>
+      <form className={styles.form} onSubmit={submitForm} noValidate>
         {fields.map((field) => {
-          const commonProps = {
-            id: field.name,
-            name: field.name,
-            placeholder: field.placeholder,
-          };
+          const fieldError = errors[field.name];
 
           return (
             <label key={field.name} htmlFor={field.name}>
               <span>{field.label}</span>
               {field.as === "textarea" ? (
-                <textarea {...commonProps} rows={4} />
+                <textarea
+                  id={field.name}
+                  placeholder={field.placeholder}
+                  rows={4}
+                  {...register(field.name)}
+                />
               ) : (
-                <input {...commonProps} type={field.type ?? "text"} />
+                <input
+                  id={field.name}
+                  placeholder={field.placeholder}
+                  type={field.type ?? "text"}
+                  {...register(field.name)}
+                />
               )}
+              {fieldError ? <small>{fieldError.message}</small> : null}
             </label>
           );
         })}
 
         <div className={styles.actions}>
-          <button type="button" className={styles.secondary}>
+          <button type="button" className={styles.secondary} onClick={() => reset(defaultValues)}>
             Limpar
           </button>
-          <button type="submit" className={styles.primary}>
-            Salvar
+          <button type="submit" className={styles.primary} disabled={isSubmitting}>
+            {isSubmitting ? "Salvando..." : "Salvar"}
           </button>
         </div>
       </form>
