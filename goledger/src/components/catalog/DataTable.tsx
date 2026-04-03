@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import ReactDataTable, { type TableColumn } from "react-data-table-component";
 import styles from "./data-table.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 
@@ -10,6 +12,32 @@ type DataTableProps = {
 };
 
 export function DataTable({ caption, columns, rows, onEdit, onDelete }: DataTableProps) {
+  const tableColumns = useMemo<TableColumn<CatalogRecord>[]>(
+    () => [
+      ...columns.map((column, index) => ({
+        name: column,
+        selector: (row: CatalogRecord) => row.cells[index] ?? "-",
+        sortable: true,
+        grow: index === 0 ? 2 : 1,
+      })),
+      {
+        name: "Acoes",
+        cell: (row: CatalogRecord) => (
+          <div className={styles.actions}>
+            <button type="button" onClick={() => onEdit?.(row)}>
+              Editar
+            </button>
+            <button type="button" onClick={() => onDelete?.(row)}>
+              Excluir
+            </button>
+          </div>
+        ),
+        width: "180px",
+      },
+    ],
+    [columns, onDelete, onEdit],
+  );
+
   return (
     <section className={styles.tableCard} aria-label={caption}>
       <div className={styles.header}>
@@ -21,35 +49,18 @@ export function DataTable({ caption, columns, rows, onEdit, onDelete }: DataTabl
       </div>
 
       <div className={styles.tableWrap}>
-        <table>
-          <thead>
-            <tr>
-              {columns.map((column) => (
-                <th key={column}>{column}</th>
-              ))}
-              <th>Acoes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                {row.cells.map((cell, index) => (
-                  <td key={`${row.id}-${index}`}>{cell}</td>
-                ))}
-                <td>
-                  <div className={styles.actions}>
-                    <button type="button" onClick={() => onEdit?.(row)}>
-                      Editar
-                    </button>
-                    <button type="button" onClick={() => onDelete?.(row)}>
-                      Excluir
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ReactDataTable
+          columns={tableColumns}
+          data={rows}
+          keyField="id"
+          pagination
+          paginationPerPage={10}
+          paginationRowsPerPageOptions={[10, 25, 50, 100]}
+          highlightOnHover
+          pointerOnHover
+          responsive
+          noDataComponent="Nenhum registro encontrado."
+        />
       </div>
     </section>
   );

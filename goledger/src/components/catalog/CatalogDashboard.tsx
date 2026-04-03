@@ -68,6 +68,7 @@ function parseSearchResult(raw: unknown): Record<string, unknown>[] {
   return [];
 }
 
+
 function normalizeRows(assets: Record<string, unknown>[]): CatalogRecord[] {
   return assets.map((asset, index) => {
     const assetType = String(asset["@assetType"] ?? "asset");

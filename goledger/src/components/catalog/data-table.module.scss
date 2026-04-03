@@ -38,28 +38,8 @@
 .tableWrap {
   overflow-x: auto;
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
+  :global(.rdt_Table) {
     min-width: 760px;
-  }
-
-  th,
-  td {
-    padding: 14px 12px;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  th {
-    color: #6b7280;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  td {
-    color: #111827;
   }
 }
 
