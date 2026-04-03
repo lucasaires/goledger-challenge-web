@@ -21,7 +21,7 @@ type CrudFormProps = {
   title: string;
   description: string;
   fields: Field[];
-  onSubmit?: (values: CrudFormValues) => void;
+  onSubmit?: (values: CrudFormValues) => void | Promise<void>;
 };
 
 function buildSchema(fields: Field[]) {
@@ -61,8 +61,8 @@ export function CrudForm({ title, description, fields, onSubmit }: CrudFormProps
     mode: "onTouched",
   });
 
-  const submitForm = handleSubmit((values) => {
-    onSubmit?.(values);
+  const submitForm = handleSubmit(async (values) => {
+    await onSubmit?.(values);
     reset(defaultValues);
   });
 
