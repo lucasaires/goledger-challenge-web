@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "react-modal";
+import { ToastContainer, toast } from "react-toastify";
 import { CrudForm, DataTable, FilterBar } from "@/components/catalog";
 import { StatCard, Topbar, WorkspacePanel } from "@/components/dashboard";
 import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goledger";
@@ -272,6 +273,7 @@ export function CatalogDashboard() {
         );
 
         setStatusMessage(`Registro ${values.title} atualizado com sucesso.`);
+        toast.success(`Registro ${values.title} atualizado com sucesso.`);
         setIsFormModalOpen(false);
         setEditingRow(null);
         return;
@@ -294,6 +296,7 @@ export function CatalogDashboard() {
       ]);
 
       setStatusMessage(`Registro ${values.title} criado com sucesso na blockchain.`);
+      toast.success(`Registro ${values.title} criado com sucesso.`);
       setIsFormModalOpen(false);
       setEditingRow(null);
     } catch (error) {
@@ -302,6 +305,7 @@ export function CatalogDashboard() {
           ? `Falha ao criar o registro: ${error.message}`
           : "Falha ao criar o registro na API.",
       );
+      toast.error("Falha ao salvar registro.");
       throw error;
     }
   };
@@ -332,6 +336,7 @@ export function CatalogDashboard() {
 
       setRows((currentRows) => currentRows.filter((currentRow) => currentRow.id !== row.id));
       setStatusMessage(`Registro ${row.values.title} removido com sucesso.`);
+      toast.success(`Registro ${row.values.title} removido com sucesso.`);
 
       if (editingRow?.id === row.id) {
         setEditingRow(null);
@@ -342,6 +347,7 @@ export function CatalogDashboard() {
           ? `Falha ao remover o registro: ${error.message}`
           : "Falha ao remover o registro na API.",
       );
+      toast.error("Falha ao remover registro.");
     }
   };
 
@@ -431,6 +437,17 @@ export function CatalogDashboard() {
           onCancel={handleCloseModal}
         />
       </Modal>
+
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3200}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="light"
+      />
     </div>
   );
 }
