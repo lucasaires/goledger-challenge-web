@@ -69,16 +69,32 @@ export function normalizeRows(assets: Record<string, unknown>[]): CatalogRecord[
     const description = String(asset.description ?? "");
     const recommendedAge = String(asset.recommendedAge ?? "");
     const status = String(asset.status ?? "Ativo");
+    const values: Record<string, string> = {
+      title,
+      description,
+      recommendedAge,
+    };
+
+    // Keep primitive properties from asset payload so details modal can show type-specific fields.
+    for (const [key, value] of Object.entries(asset)) {
+      if (key.startsWith("@")) {
+        continue;
+      }
+
+      if (key in values || value === null || value === undefined) {
+        continue;
+      }
+
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        values[key] = String(value);
+      }
+    }
 
     return {
       id: uniqueKey,
       assetType,
       cells: [title, assetType, status],
-      values: {
-        title,
-        description,
-        recommendedAge,
-      },
+      values,
     };
   });
 }

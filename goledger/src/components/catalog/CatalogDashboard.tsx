@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { format, isValid, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import Modal from "react-modal";
 import { ToastContainer, toast } from "react-toastify";
 import { CrudForm, DataTable, FilterBar } from "@/components/catalog";
@@ -10,6 +12,45 @@ import type { CatalogRecord } from "@/lib/goledger";
 import { useCatalogData } from "./useCatalogData";
 
 const catalogColumns = ["Nome", "Categoria", "Status"];
+
+const detailLabelByKey: Record<string, string> = {
+  title: "Titulo",
+  description: "Descricao",
+  recommendedAge: "Idade recomendada",
+  number: "Numero",
+  seasonNumber: "Numero da temporada",
+  episodeNumber: "Numero do episodio",
+  rating: "Avaliacao",
+  releaseDate: "Data de lancamento",
+  year: "Ano",
+};
+
+function formatDetailKey(key: string) {
+  if (detailLabelByKey[key]) {
+    return detailLabelByKey[key];
+  }
+
+  return key
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+function formatDetailValue(key: string, value: string) {
+  if (key === "releaseDate") {
+    const parsedDate = parseISO(value);
+
+    if (isValid(parsedDate)) {
+      return format(parsedDate, "dd/MM/yyyy 'as' HH:mm", { locale: ptBR });
+    }
+  }
+
+  if (key === "recommendedAge") {
+    return `${value} anos`;
+  }
+
+  return value;
+}
 
 export function CatalogDashboard() {
   const [editingRow, setEditingRow] = useState<CatalogRecord | null>(null);
@@ -147,6 +188,45 @@ export function CatalogDashboard() {
     [editingRow],
   );
 
+  const detailEntries = useMemo(() => {
+    if (!selectedRow) {
+      return [] as Array<[string, string]>;
+    }
+
+    const priority = [
+      "title",
+      "description",
+      "recommendedAge",
+      "number",
+      "seasonNumber",
+      "episodeNumber",
+      "rating",
+      "releaseDate",
+      "year",
+    ];
+
+    return Object.entries(selectedRow.values)
+      .filter(([, value]) => value.trim().length > 0)
+      .sort(([leftKey], [rightKey]) => {
+        const leftIndex = priority.indexOf(leftKey);
+        const rightIndex = priority.indexOf(rightKey);
+
+        if (leftIndex === -1 && rightIndex === -1) {
+          return leftKey.localeCompare(rightKey);
+        }
+
+        if (leftIndex === -1) {
+          return 1;
+        }
+
+        if (rightIndex === -1) {
+          return -1;
+        }
+
+        return leftIndex - rightIndex;
+      });
+  }, [selectedRow]);
+
   return (
     <div className={styles.page}>
       <Topbar
@@ -232,27 +312,23 @@ export function CatalogDashboard() {
           </button>
         </div>
 
+        <section className={styles.detailsHighlight}>
+          <h4>{selectedRow?.values.title ?? "Registro"}</h4>
+          <div className={styles.detailsMeta}>
+            <span>{selectedRow?.assetType ?? "-"}</span>
+            <span>{selectedRow?.cells[2] ?? "-"}</span>
+          </div>
+        </section>
+
+        <p className={styles.detailsSectionTitle}>Informacoes do item</p>
+
         <dl className={styles.detailsGrid}>
-          <div>
-            <dt>Titulo</dt>
-            <dd>{selectedRow?.values.title ?? "-"}</dd>
-          </div>
-          <div>
-            <dt>Categoria</dt>
-            <dd>{selectedRow?.assetType ?? "-"}</dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd>{selectedRow?.cells[2] ?? "-"}</dd>
-          </div>
-          <div>
-            <dt>Idade recomendada</dt>
-            <dd>{selectedRow?.values.recommendedAge ?? "-"}</dd>
-          </div>
-          <div className={styles.detailsDescription}>
-            <dt>Descricao</dt>
-            <dd>{selectedRow?.values.description ?? "-"}</dd>
-          </div>
+          {detailEntries.map(([key, value]) => (
+            <div key={key} className={key === "description" ? styles.detailsDescription : undefined}>
+              <dt>{formatDetailKey(key)}</dt>
+              <dd>{formatDetailValue(key, value)}</dd>
+            </div>
+          ))}
         </dl>
       </Modal>
 
