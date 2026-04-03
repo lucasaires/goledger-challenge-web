@@ -8,46 +8,6 @@ import styles from "../../app/page.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 import type { CatalogFilterValues } from "@/components/catalog/FilterBar";
 
-const initialStats = [
-  { label: "Total de series", value: 0 },
-  { label: "Total de temporadas", value: 0 },
-  { label: "Total de episodios", value: 0 },
-  { label: "Watchlists ativas", value: 0 },
-];
-
-const initialRows: CatalogRecord[] = [
-  {
-    id: "TVS-001",
-    assetType: "tvShow",
-    cells: ["Breaking Series", "Serie", "Ativo"],
-    values: {
-      title: "Breaking Series",
-      description: "Serie de exemplo para o template.",
-      code: "TVS-001",
-    },
-  },
-  {
-    id: "TVS-002",
-    assetType: "tvShow",
-    cells: ["Season One", "Temporada", "Ativo"],
-    values: {
-      title: "Season One",
-      description: "Temporada de exemplo para o template.",
-      code: "TVS-002",
-    },
-  },
-  {
-    id: "TVS-003",
-    assetType: "tvShow",
-    cells: ["Episode Pilot", "Episodio", "Rascunho"],
-    values: {
-      title: "Episode Pilot",
-      description: "Episodio de exemplo para o template.",
-      code: "TVS-003",
-    },
-  },
-];
-
 const catalogColumns = ["Nome", "Categoria", "Status"];
 
 function mapCategoryToAssetType(category: string) {
@@ -132,15 +92,70 @@ function filterRowsByTerm(items: CatalogRecord[], term: string) {
   });
 }
 
+function classifyAssetType(assetType: string) {
+  const normalized = assetType.toLowerCase();
+
+  if (normalized.includes("watch")) {
+    return "watchlist";
+  }
+
+  if (normalized.includes("episod")) {
+    return "episode";
+  }
+
+  if (normalized.includes("season") || normalized.includes("temporad")) {
+    return "season";
+  }
+
+  if (normalized.includes("tvshow") || normalized.includes("series") || normalized.includes("serie")) {
+    return "series";
+  }
+
+  return "other";
+}
+
 export function CatalogDashboard() {
-  const [rows, setRows] = useState(initialRows);
+  const [rows, setRows] = useState<CatalogRecord[]>([]);
   const [editingRow, setEditingRow] = useState<CatalogRecord | null>(null);
   const [isFiltering, setIsFiltering] = useState(false);
   const [statusMessage, setStatusMessage] = useState(
-    "Conecte a API para criar registros reais a partir do formulario.",
+    "Carregando registros da API...",
   );
 
-  const stats = useMemo(() => initialStats, []);
+  const stats = useMemo(() => {
+    let totalSeries = 0;
+    let totalSeasons = 0;
+    let totalEpisodes = 0;
+    let activeWatchlists = 0;
+
+    for (const row of rows) {
+      const bucket = classifyAssetType(row.assetType);
+      const status = (row.cells[2] ?? "").toLowerCase();
+
+      if (bucket === "series") {
+        totalSeries += 1;
+      }
+
+      if (bucket === "season") {
+        totalSeasons += 1;
+      }
+
+      if (bucket === "episode") {
+        totalEpisodes += 1;
+      }
+
+      if (bucket === "watchlist" && status.includes("ativo")) {
+        activeWatchlists += 1;
+      }
+    }
+
+    return [
+      { label: "Total de series", value: totalSeries },
+      { label: "Total de temporadas", value: totalSeasons },
+      { label: "Total de episodios", value: totalEpisodes },
+      { label: "Watchlists ativas", value: activeWatchlists },
+    ];
+  }, [rows]);
 
   const handleFilter = useCallback(async ({ term, category }: CatalogFilterValues) => {
     const assetType = mapCategoryToAssetType(category);
