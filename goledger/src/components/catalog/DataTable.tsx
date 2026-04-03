@@ -1,12 +1,15 @@
 import styles from "./data-table.module.scss";
+import type { CatalogRecord } from "@/lib/goledger";
 
 type DataTableProps = {
   caption: string;
   columns: string[];
-  rows: Array<{ id: string; cells: string[] }>;
+  rows: CatalogRecord[];
+  onEdit?: (row: CatalogRecord) => void;
+  onDelete?: (row: CatalogRecord) => void;
 };
 
-export function DataTable({ caption, columns, rows }: DataTableProps) {
+export function DataTable({ caption, columns, rows, onEdit, onDelete }: DataTableProps) {
   return (
     <section className={styles.tableCard} aria-label={caption}>
       <div className={styles.header}>
@@ -35,8 +38,12 @@ export function DataTable({ caption, columns, rows }: DataTableProps) {
                 ))}
                 <td>
                   <div className={styles.actions}>
-                    <button type="button">Editar</button>
-                    <button type="button">Excluir</button>
+                    <button type="button" onClick={() => onEdit?.(row)}>
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => onDelete?.(row)}>
+                      Excluir
+                    </button>
                   </div>
                 </td>
               </tr>

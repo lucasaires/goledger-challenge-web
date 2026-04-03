@@ -15,5 +15,7 @@ export type SearchQuery = {
 
 export type CatalogRecord = {
   id: string;
+  assetType: string;
   cells: string[];
+  values: Record<string, string>;
 };

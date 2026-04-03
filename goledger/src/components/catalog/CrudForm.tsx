@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +13,7 @@ type Field = {
   type?: string;
   as?: "input" | "textarea";
   required?: boolean;
+  readOnly?: boolean;
 };
 
 type CrudFormValues = Record<string, string>;
@@ -21,7 +22,11 @@ type CrudFormProps = {
   title: string;
   description: string;
   fields: Field[];
+  initialValues?: CrudFormValues;
+  submitLabel?: string;
+  cancelLabel?: string;
   onSubmit?: (values: CrudFormValues) => void | Promise<void>;
+  onCancel?: () => void;
 };
 
 function buildSchema(fields: Field[]) {
@@ -38,7 +43,16 @@ function buildSchema(fields: Field[]) {
   return z.object(shape as Record<string, z.ZodTypeAny>);
 }
 
-export function CrudForm({ title, description, fields, onSubmit }: CrudFormProps) {
+export function CrudForm({
+  title,
+  description,
+  fields,
+  initialValues,
+  submitLabel = "Salvar",
+  cancelLabel = "Limpar",
+  onSubmit,
+  onCancel,
+}: CrudFormProps) {
   const schema = useMemo(() => buildSchema(fields), [fields]);
 
   const defaultValues = useMemo(
@@ -57,9 +71,13 @@ export function CrudForm({ title, description, fields, onSubmit }: CrudFormProps
     formState: { errors, isSubmitting },
   } = useForm<CrudFormValues>({
     resolver: zodResolver(schema) as Resolver<CrudFormValues>,
-    defaultValues,
+    defaultValues: initialValues ?? defaultValues,
     mode: "onTouched",
   });
+
+  useEffect(() => {
+    reset(initialValues ?? defaultValues);
+  }, [defaultValues, initialValues, reset]);
 
   const submitForm = handleSubmit(async (values) => {
     await onSubmit?.(values);
@@ -85,6 +103,7 @@ export function CrudForm({ title, description, fields, onSubmit }: CrudFormProps
                   id={field.name}
                   placeholder={field.placeholder}
                   rows={4}
+                  readOnly={field.readOnly}
                   {...register(field.name)}
                 />
               ) : (
@@ -92,6 +111,7 @@ export function CrudForm({ title, description, fields, onSubmit }: CrudFormProps
                   id={field.name}
                   placeholder={field.placeholder}
                   type={field.type ?? "text"}
+                  readOnly={field.readOnly}
                   {...register(field.name)}
                 />
               )}
@@ -101,11 +121,18 @@ export function CrudForm({ title, description, fields, onSubmit }: CrudFormProps
         })}
 
         <div className={styles.actions}>
-          <button type="button" className={styles.secondary} onClick={() => reset(defaultValues)}>
-            Limpar
+          <button
+            type="button"
+            className={styles.secondary}
+            onClick={() => {
+              reset(defaultValues);
+              onCancel?.();
+            }}
+          >
+            {cancelLabel}
           </button>
           <button type="submit" className={styles.primary} disabled={isSubmitting}>
-            {isSubmitting ? "Salvando..." : "Salvar"}
+            {isSubmitting ? "Salvando..." : submitLabel}
           </button>
         </div>
       </form>
