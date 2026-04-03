@@ -1,0 +1,85 @@
+@use "../../styles/abstracts" as *;
+
+.tableCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+
+  h2 {
+    font-size: 20px;
+    color: #111827;
+  }
+
+  p {
+    margin-top: 6px;
+    color: #6b7280;
+  }
+
+  span {
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4338ca;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+}
+
+.tableWrap {
+  overflow-x: auto;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+  }
+
+  th,
+  td {
+    padding: 14px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  th {
+    color: #6b7280;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  td {
+    color: #111827;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+
+  button {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #111827;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+}
+
+@include mobile {
+  .header {
+    flex-direction: column;
+  }
+}
