@@ -2,9 +2,8 @@ export type AssetPayload = Record<string, unknown> & {
   "@assetType": string;
 };
 
-export type AssetKey = {
+export type AssetKey = Record<string, unknown> & {
   "@assetType": string;
-  id: string;
 };
 
 export type SearchQuery = {

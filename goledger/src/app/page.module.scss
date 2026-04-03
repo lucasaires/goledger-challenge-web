@@ -26,6 +26,48 @@
   align-items: start;
 }
 
+.workspaceFullWidth {
+  grid-column: 1 / -1;
+}
+
+.formModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 1000;
+}
+
+.formModal {
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  padding: 18px;
+  outline: none;
+}
+
+.formModalHeader {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+
+  button {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #111827;
+    border-radius: 8px;
+    height: 36px;
+    padding: 0 12px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+}
+
 @include mobile {
   .page {
     padding: 20px;
@@ -37,5 +79,14 @@
 
   .workspaceGrid {
     grid-template-columns: 1fr;
+  }
+
+  .formModalOverlay {
+    padding: 12px;
+  }
+
+  .formModal {
+    max-height: calc(100dvh - 24px);
+    padding: 14px;
   }
 }

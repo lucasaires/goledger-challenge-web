@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Modal from "react-modal";
 import { CrudForm, DataTable, FilterBar } from "@/components/catalog";
 import { StatCard, Topbar, WorkspacePanel } from "@/components/dashboard";
 import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goledger";
@@ -69,22 +70,33 @@ function parseSearchResult(raw: unknown): Record<string, unknown>[] {
 function normalizeRows(assets: Record<string, unknown>[]): CatalogRecord[] {
   return assets.map((asset, index) => {
     const assetType = String(asset["@assetType"] ?? "asset");
+    const uniqueKey = String(asset["@key"] ?? `${assetType}:${asset.title ?? asset.id ?? index}`);
     const title = String(asset.title ?? asset.name ?? asset.id ?? `Registro ${index + 1}`);
     const description = String(asset.description ?? "");
-    const code = String(asset.id ?? asset.code ?? `${assetType}-${index + 1}`);
+    const recommendedAge = String(asset.recommendedAge ?? "");
     const status = String(asset.status ?? "Ativo");
 
     return {
-      id: code,
+      id: uniqueKey,
       assetType,
       cells: [title, assetType, status],
       values: {
         title,
         description,
-        code,
+        recommendedAge,
       },
     };
   });
+}
+
+function parseRecommendedAge(value: string) {
+  const parsedValue = Number(value);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    throw new Error("Idade recomendada invalida. Informe um numero maior ou igual a zero.");
+  }
+
+  return parsedValue;
 }
 
 function uniqueAssets(assets: Record<string, unknown>[]) {
@@ -92,8 +104,8 @@ function uniqueAssets(assets: Record<string, unknown>[]) {
 
   return assets.filter((asset) => {
     const assetType = String(asset["@assetType"] ?? "asset");
-    const id = String(asset.id ?? asset.code ?? "");
-    const key = `${assetType}:${id}`;
+    const keyValue = String(asset["@key"] ?? asset.title ?? asset.id ?? asset.code ?? "");
+    const key = `${assetType}:${keyValue}`;
 
     if (seen.has(key)) {
       return false;
@@ -142,6 +154,7 @@ function classifyAssetType(assetType: string) {
 export function CatalogDashboard() {
   const [rows, setRows] = useState<CatalogRecord[]>([]);
   const [editingRow, setEditingRow] = useState<CatalogRecord | null>(null);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
   const [statusMessage, setStatusMessage] = useState(
     "Carregando registros da API...",
@@ -215,24 +228,30 @@ export function CatalogDashboard() {
   }, []);
 
   useEffect(() => {
+    Modal.setAppElement("body");
+  }, []);
+
+  useEffect(() => {
     void handleFilter({ term: "", category: "all" });
   }, [handleFilter]);
 
   const handleCreate = async (values: Record<string, string>) => {
+    const recommendedAge = parseRecommendedAge(values.recommendedAge);
+
     const payload = {
       "@assetType": "tvShows",
-      id: values.code,
       title: values.title,
       description: values.description,
+      recommendedAge,
     };
 
     try {
       if (editingRow) {
         await updateAsset({
           "@assetType": editingRow.assetType,
-          id: editingRow.id,
           title: values.title,
           description: values.description,
+          recommendedAge,
         });
 
         setRows((currentRows) =>
@@ -245,13 +264,15 @@ export function CatalogDashboard() {
                     ...row.values,
                     title: values.title,
                     description: values.description,
+                    recommendedAge: values.recommendedAge,
                   },
                 }
               : row,
           ),
         );
 
-        setStatusMessage(`Registro ${editingRow.id} atualizado com sucesso.`);
+        setStatusMessage(`Registro ${values.title} atualizado com sucesso.`);
+        setIsFormModalOpen(false);
         setEditingRow(null);
         return;
       }
@@ -260,19 +281,21 @@ export function CatalogDashboard() {
 
       setRows((currentRows) => [
         {
-          id: values.code,
+          id: `tvShows:${values.title}:${Date.now()}`,
           assetType: "tvShows",
           cells: [values.title, "Serie", "Ativo"],
           values: {
             title: values.title,
             description: values.description,
-            code: values.code,
+            recommendedAge: values.recommendedAge,
           },
         },
         ...currentRows,
       ]);
 
-      setStatusMessage(`Registro ${values.code} criado com sucesso na blockchain.`);
+      setStatusMessage(`Registro ${values.title} criado com sucesso na blockchain.`);
+      setIsFormModalOpen(false);
+      setEditingRow(null);
     } catch (error) {
       setStatusMessage(
         error instanceof Error
@@ -285,18 +308,30 @@ export function CatalogDashboard() {
 
   const handleEdit = (row: CatalogRecord) => {
     setEditingRow(row);
-    setStatusMessage(`Editando o registro ${row.id}.`);
+    setIsFormModalOpen(true);
+    setStatusMessage(`Editando o registro ${row.values.title}.`);
+  };
+
+  const handleOpenCreateModal = () => {
+    setEditingRow(null);
+    setIsFormModalOpen(true);
+    setStatusMessage("Preencha os campos para criar um novo registro.");
+  };
+
+  const handleCloseModal = () => {
+    setIsFormModalOpen(false);
+    setEditingRow(null);
   };
 
   const handleDelete = async (row: CatalogRecord) => {
     try {
       await deleteAsset({
         "@assetType": row.assetType,
-        id: row.id,
+        title: row.values.title,
       });
 
       setRows((currentRows) => currentRows.filter((currentRow) => currentRow.id !== row.id));
-      setStatusMessage(`Registro ${row.id} removido com sucesso.`);
+      setStatusMessage(`Registro ${row.values.title} removido com sucesso.`);
 
       if (editingRow?.id === row.id) {
         setEditingRow(null);
@@ -314,7 +349,12 @@ export function CatalogDashboard() {
   const formLabel = editingRow ? "Atualizar" : "Salvar";
   const cancelLabel = editingRow ? "Cancelar" : "Limpar";
   const formFields = [
-    { label: "Titulo", name: "title", placeholder: "Digite o titulo" },
+    {
+      label: "Titulo",
+      name: "title",
+      placeholder: "Digite o titulo",
+      readOnly: Boolean(editingRow),
+    },
     {
       label: "Descricao",
       name: "description",
@@ -322,10 +362,10 @@ export function CatalogDashboard() {
       as: "textarea" as const,
     },
     {
-      label: "Codigo",
-      name: "code",
-      placeholder: "Ex: TVS-001",
-      readOnly: Boolean(editingRow),
+      label: "Idade recomendada",
+      name: "recommendedAge",
+      placeholder: "Ex: 14",
+      type: "number",
     },
   ];
 
@@ -335,6 +375,7 @@ export function CatalogDashboard() {
         title="GoLedger TV Shows"
         description="Painel base para criar, editar e consultar series, temporadas e episodios."
         actionLabel="Novo registro"
+        onAction={handleOpenCreateModal}
       />
 
       <main className={styles.content}>
@@ -345,35 +386,51 @@ export function CatalogDashboard() {
         </section>
 
         <FilterBar
-          searchPlaceholder="Buscar por titulo, codigo ou episodio"
+          searchPlaceholder="Buscar por titulo, descricao ou episodio"
           categories={["Series", "Temporadas", "Episodios", "Watchlists"]}
           isLoading={isFiltering}
           onApply={handleFilter}
         />
 
         <section className={styles.workspaceGrid}>
-          <CrudForm
-            title={editingRow ? `Editando ${editingRow.id}` : "Formulario de cadastro"}
-            description="Base para criar e editar assets da aplicacao a partir da API."
-            fields={formFields}
-            initialValues={formValues}
-            submitLabel={formLabel}
-            cancelLabel={cancelLabel}
-            onSubmit={handleCreate}
-            onCancel={() => setEditingRow(null)}
-          />
-
-          <DataTable
-            caption="Lista de registros"
-            columns={catalogColumns}
-            rows={rows}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          <div className={styles.workspaceFullWidth}>
+            <DataTable
+              caption="Lista de registros"
+              columns={catalogColumns}
+              rows={rows}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          </div>
         </section>
 
         <WorkspacePanel title="Area de trabalho" description={statusMessage} />
       </main>
+
+      <Modal
+        isOpen={isFormModalOpen}
+        onRequestClose={handleCloseModal}
+        contentLabel="Formulario de cadastro"
+        className={styles.formModal}
+        overlayClassName={styles.formModalOverlay}
+      >
+        <div className={styles.formModalHeader}>
+          <button type="button" onClick={handleCloseModal} aria-label="Fechar formulario">
+            Fechar
+          </button>
+        </div>
+
+        <CrudForm
+          title={editingRow ? `Editando ${editingRow.values.title}` : "Formulario de cadastro"}
+          description="Base para criar e editar assets da aplicacao a partir da API."
+          fields={formFields}
+          initialValues={formValues}
+          submitLabel={formLabel}
+          cancelLabel={cancelLabel}
+          onSubmit={handleCreate}
+          onCancel={handleCloseModal}
+        />
+      </Modal>
     </div>
   );
 }
