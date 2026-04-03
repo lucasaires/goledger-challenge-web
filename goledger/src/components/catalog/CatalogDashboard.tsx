@@ -10,6 +10,14 @@ import type { CatalogFilterValues } from "@/components/catalog/FilterBar";
 
 const catalogColumns = ["Nome", "Categoria", "Status"];
 
+const assetTypeAliases = {
+  all: ["tvShows", "tvShow", "seasons", "season", "episodes", "episode", "watchlists", "watchlist"],
+  series: ["tvShows", "tvShow"],
+  season: ["seasons", "season"],
+  episode: ["episodes", "episode"],
+  watchlist: ["watchlists", "watchlist"],
+} as const;
+
 function mapCategoryToAssetType(category: string) {
   const normalized = category.toLowerCase();
 
@@ -26,7 +34,7 @@ function mapCategoryToAssetType(category: string) {
   }
 
   if (normalized.includes("series") || normalized.includes("serie")) {
-    return "tvShow";
+    return "series";
   }
 
   return "all";
@@ -76,6 +84,23 @@ function normalizeRows(assets: Record<string, unknown>[]): CatalogRecord[] {
         code,
       },
     };
+  });
+}
+
+function uniqueAssets(assets: Record<string, unknown>[]) {
+  const seen = new Set<string>();
+
+  return assets.filter((asset) => {
+    const assetType = String(asset["@assetType"] ?? "asset");
+    const id = String(asset.id ?? asset.code ?? "");
+    const key = `${assetType}:${id}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
   });
 }
 
@@ -158,14 +183,21 @@ export function CatalogDashboard() {
   }, [rows]);
 
   const handleFilter = useCallback(async ({ term, category }: CatalogFilterValues) => {
-    const assetType = mapCategoryToAssetType(category);
-    const selector = assetType === "all" ? {} : { "@assetType": assetType };
+    const bucket = mapCategoryToAssetType(category);
+    const typesToSearch = assetTypeAliases[bucket];
 
     try {
       setIsFiltering(true);
 
-      const response = await searchAssets({ selector });
-      const parsedAssets = parseSearchResult(response);
+      const responses = await Promise.all(
+        typesToSearch.map((assetType) =>
+          searchAssets({ selector: { "@assetType": assetType } }),
+        ),
+      );
+
+      const parsedAssets = uniqueAssets(
+        responses.flatMap((response) => parseSearchResult(response)),
+      );
       const normalizedRows = normalizeRows(parsedAssets);
       const filteredRows = filterRowsByTerm(normalizedRows, term);
 
@@ -188,7 +220,7 @@ export function CatalogDashboard() {
 
   const handleCreate = async (values: Record<string, string>) => {
     const payload = {
-      "@assetType": "tvShow",
+      "@assetType": "tvShows",
       id: values.code,
       title: values.title,
       description: values.description,
@@ -229,7 +261,7 @@ export function CatalogDashboard() {
       setRows((currentRows) => [
         {
           id: values.code,
-          assetType: "tvShow",
+          assetType: "tvShows",
           cells: [values.title, "Serie", "Ativo"],
           values: {
             title: values.title,
