@@ -14,6 +14,7 @@ const catalogColumns = ["Nome", "Categoria", "Status"];
 export function CatalogDashboard() {
   const [editingRow, setEditingRow] = useState<CatalogRecord | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<CatalogRecord | null>(null);
   const [rowToDelete, setRowToDelete] = useState<CatalogRecord | null>(null);
   const [isDeletingRow, setIsDeletingRow] = useState(false);
   const {
@@ -70,6 +71,14 @@ export function CatalogDashboard() {
   const handleCloseModal = () => {
     setIsFormModalOpen(false);
     setEditingRow(null);
+  };
+
+  const handleOpenDetailsModal = (row: CatalogRecord) => {
+    setSelectedRow(row);
+  };
+
+  const handleCloseDetailsModal = () => {
+    setSelectedRow(null);
   };
 
   const handleRequestDelete = (row: CatalogRecord) => {
@@ -162,6 +171,7 @@ export function CatalogDashboard() {
               caption="Lista de registros"
               columns={catalogColumns}
               rows={rows}
+              onRowClick={handleOpenDetailsModal}
               onEdit={handleEdit}
               onDelete={handleRequestDelete}
             />
@@ -194,6 +204,44 @@ export function CatalogDashboard() {
           onSubmit={handleCreate}
           onCancel={handleCloseModal}
         />
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(selectedRow)}
+        onRequestClose={handleCloseDetailsModal}
+        contentLabel="Detalhes do registro"
+        className={styles.detailsModal}
+        overlayClassName={styles.formModalOverlay}
+      >
+        <div className={styles.detailsModalHeader}>
+          <h3>Detalhes do registro</h3>
+          <button type="button" onClick={handleCloseDetailsModal} aria-label="Fechar detalhes">
+            Fechar
+          </button>
+        </div>
+
+        <dl className={styles.detailsGrid}>
+          <div>
+            <dt>Titulo</dt>
+            <dd>{selectedRow?.values.title ?? "-"}</dd>
+          </div>
+          <div>
+            <dt>Categoria</dt>
+            <dd>{selectedRow?.assetType ?? "-"}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{selectedRow?.cells[2] ?? "-"}</dd>
+          </div>
+          <div>
+            <dt>Idade recomendada</dt>
+            <dd>{selectedRow?.values.recommendedAge ?? "-"}</dd>
+          </div>
+          <div className={styles.detailsDescription}>
+            <dt>Descricao</dt>
+            <dd>{selectedRow?.values.description ?? "-"}</dd>
+          </div>
+        </dl>
       </Modal>
 
       <Modal

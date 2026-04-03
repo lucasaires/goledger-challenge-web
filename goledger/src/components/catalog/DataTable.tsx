@@ -7,11 +7,12 @@ type DataTableProps = {
   caption: string;
   columns: string[];
   rows: CatalogRecord[];
+  onRowClick?: (row: CatalogRecord) => void;
   onEdit?: (row: CatalogRecord) => void;
   onDelete?: (row: CatalogRecord) => void;
 };
 
-export function DataTable({ caption, columns, rows, onEdit, onDelete }: DataTableProps) {
+export function DataTable({ caption, columns, rows, onRowClick, onEdit, onDelete }: DataTableProps) {
   const tableColumns = useMemo<TableColumn<CatalogRecord>[]>(
     () => [
       ...columns.map((column, index) => ({
@@ -24,10 +25,22 @@ export function DataTable({ caption, columns, rows, onEdit, onDelete }: DataTabl
         name: "Acoes",
         cell: (row: CatalogRecord) => (
           <div className={styles.actions}>
-            <button type="button" onClick={() => onEdit?.(row)}>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit?.(row);
+              }}
+            >
               Editar
             </button>
-            <button type="button" onClick={() => onDelete?.(row)}>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete?.(row);
+              }}
+            >
               Excluir
             </button>
           </div>
@@ -56,6 +69,7 @@ export function DataTable({ caption, columns, rows, onEdit, onDelete }: DataTabl
           pagination
           paginationPerPage={10}
           paginationRowsPerPageOptions={[10, 25, 50, 100]}
+          onRowClicked={onRowClick}
           highlightOnHover
           pointerOnHover
           responsive
