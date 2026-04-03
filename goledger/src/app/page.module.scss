@@ -68,6 +68,59 @@
   }
 }
 
+.confirmModal {
+  width: min(440px, 100%);
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  padding: 18px;
+  outline: none;
+}
+
+.confirmModalContent {
+  display: grid;
+  gap: 12px;
+
+  h3 {
+    color: #111827;
+    font-size: 18px;
+  }
+
+  p {
+    color: #4b5563;
+    line-height: 1.5;
+  }
+}
+
+.confirmModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+
+  button {
+    border-radius: 8px;
+    height: 36px;
+    padding: 0 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #111827;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+  }
+
+  button:last-child {
+    border-color: #dc2626;
+    background: #dc2626;
+    color: #ffffff;
+  }
+}
+
 @include mobile {
   .page {
     padding: 20px;
@@ -87,6 +140,10 @@
 
   .formModal {
     max-height: calc(100dvh - 24px);
+    padding: 14px;
+  }
+
+  .confirmModal {
     padding: 14px;
   }
 

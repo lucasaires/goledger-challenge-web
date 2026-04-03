@@ -14,6 +14,8 @@ const catalogColumns = ["Nome", "Categoria", "Status"];
 export function CatalogDashboard() {
   const [editingRow, setEditingRow] = useState<CatalogRecord | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<CatalogRecord | null>(null);
+  const [isDeletingRow, setIsDeletingRow] = useState(false);
   const {
     rows,
     isFiltering,
@@ -70,16 +72,37 @@ export function CatalogDashboard() {
     setEditingRow(null);
   };
 
-  const handleDeleteRow = async (row: CatalogRecord) => {
+  const handleRequestDelete = (row: CatalogRecord) => {
+    setRowToDelete(row);
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (isDeletingRow) {
+      return;
+    }
+
+    setRowToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!rowToDelete) {
+      return;
+    }
+
     try {
-      const result = await handleDelete(row);
-      toast.success(`Registro ${row.values.title} removido com sucesso.`);
+      setIsDeletingRow(true);
+      const result = await handleDelete(rowToDelete);
+      toast.success(`Registro ${rowToDelete.values.title} removido com sucesso.`);
 
       if (editingRow?.id === result.id) {
         setEditingRow(null);
       }
+
+      setRowToDelete(null);
     } catch {
       toast.error("Falha ao remover registro.");
+    } finally {
+      setIsDeletingRow(false);
     }
   };
 
@@ -140,7 +163,7 @@ export function CatalogDashboard() {
               columns={catalogColumns}
               rows={rows}
               onEdit={handleEdit}
-              onDelete={handleDeleteRow}
+              onDelete={handleRequestDelete}
             />
           </div>
         </section>
@@ -171,6 +194,34 @@ export function CatalogDashboard() {
           onSubmit={handleCreate}
           onCancel={handleCloseModal}
         />
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(rowToDelete)}
+        onRequestClose={handleCloseDeleteModal}
+        shouldCloseOnOverlayClick={!isDeletingRow}
+        shouldCloseOnEsc={!isDeletingRow}
+        contentLabel="Confirmar exclusao"
+        className={styles.confirmModal}
+        overlayClassName={styles.formModalOverlay}
+      >
+        <div className={styles.confirmModalContent}>
+          <h3>Confirmar exclusao</h3>
+          <p>
+            Deseja realmente excluir o registro
+            {" "}
+            <strong>{rowToDelete?.values.title}</strong>
+            ?
+          </p>
+          <div className={styles.confirmModalActions}>
+            <button type="button" onClick={handleCloseDeleteModal} disabled={isDeletingRow}>
+              Cancelar
+            </button>
+            <button type="button" onClick={handleConfirmDelete} disabled={isDeletingRow}>
+              {isDeletingRow ? "Excluindo..." : "Excluir"}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <ToastContainer
