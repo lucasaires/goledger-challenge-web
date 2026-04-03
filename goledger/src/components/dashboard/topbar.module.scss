@@ -1,0 +1,41 @@
+@use "../../styles/abstracts" as *;
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+
+  h1 {
+    color: $color-text-primary-light;
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  p {
+    margin-top: 8px;
+    color: $color-text-secondary-light;
+    max-width: 640px;
+  }
+
+  button {
+    border: 0;
+    border-radius: 10px;
+    background: #111827;
+    color: #ffffff;
+    height: 42px;
+    padding: 0 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+@include mobile {
+  .topbar {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+    }
+  }
+}
