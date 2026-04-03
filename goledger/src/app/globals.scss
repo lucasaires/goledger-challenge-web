@@ -1,0 +1,31 @@
+@use "../styles/abstracts" as *;
+@use "../styles/base" as base;
+
+:root {
+  --background: #{$color-surface-light};
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #{$color-background-dark};
+    --foreground: #{$color-text-primary-dark};
+  }
+}
+
+html {
+  color-scheme: light;
+}
+
+@include base.apply-reset;
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
