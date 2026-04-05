@@ -1,4 +1,5 @@
 import type { Field } from "./CrudForm";
+import { classifyAssetType } from "@/lib/goledger/catalog-mappers";
 
 export type CatalogAssetCreationType = "tvShows" | "seasons" | "episodes" | "watchlist";
 
@@ -17,8 +18,22 @@ export const catalogAssetCreationOptions: Array<{ label: string; value: CatalogA
 function optionFromRecord(record: Record<string, unknown>) {
   const title = String(record.title ?? record.name ?? record.id ?? "");
   const key = String(record["@key"] ?? record.id ?? "");
+  const number = String(record.number ?? "");
 
-  return title && key ? { label: title, value: key } : null;
+  if (!key) {
+    return null;
+  }
+
+  if (title) {
+    const label = number ? `${title} - temporada ${number} (${key})` : `${title} (${key})`;
+    return { label, value: key };
+  }
+
+  if (number) {
+    return { label: `Temporada ${number} (${key})`, value: key };
+  }
+
+  return { label: key, value: key };
 }
 
 export function buildCreateFields(
@@ -43,7 +58,7 @@ export function buildCreateFields(
         label: "Serie",
         name: "tvShowKey",
         placeholder: "Selecione a serie",
-        as: options.tvShows.length > 0 ? "select" : "input",
+        as: "select",
         options: options.tvShows,
       },
       { label: "Ano de lancamento", name: "year", placeholder: "Ex: 2024", type: "number" },
@@ -56,12 +71,12 @@ export function buildCreateFields(
         label: "Temporada",
         name: "seasonKey",
         placeholder: "Selecione a temporada",
-        as: options.seasons.length > 0 ? "select" : "input",
+        as: "select",
         options: options.seasons,
       },
       { label: "Numero do episodio", name: "episodeNumber", placeholder: "Ex: 1", type: "number" },
       { label: "Titulo", name: "title", placeholder: "Digite o titulo" },
-      { label: "Data de lancamento", name: "releaseDate", placeholder: "2026-04-03T20:30:00Z", type: "datetime-local" },
+      { label: "Data de lancamento", name: "releaseDate", placeholder: "Selecione a data", type: "date" },
       { label: "Descricao", name: "description", placeholder: "Digite a descricao", as: "textarea" },
       { label: "Avaliacao", name: "rating", placeholder: "Ex: 8.5", type: "number", required: false },
     ];
@@ -81,6 +96,18 @@ export function buildCreateFields(
 }
 
 export function buildCreatePayload(assetType: CatalogAssetCreationType, values: Record<string, string>) {
+  const normalizeReleaseDate = (value: string) => {
+    if (!value) {
+      return value;
+    }
+
+    if (value.includes("T")) {
+      return value;
+    }
+
+    return new Date(`${value}T00:00:00Z`).toISOString();
+  };
+
   if (assetType === "tvShows") {
     return {
       "@assetType": "tvShows",
@@ -111,7 +138,7 @@ export function buildCreatePayload(assetType: CatalogAssetCreationType, values: 
       },
       episodeNumber: Number(values.episodeNumber),
       title: values.title,
-      releaseDate: values.releaseDate,
+      releaseDate: normalizeReleaseDate(values.releaseDate),
       description: values.description,
       rating: values.rating ? Number(values.rating) : undefined,
     };
@@ -139,7 +166,7 @@ export function extractCreationOptionsFromRows(rows: Array<Record<string, unknow
     .filter((item): item is CatalogAssetOption => item !== null);
 
   const seasons = rows
-    .filter((row) => String(row["@assetType"] ?? "") === "seasons")
+    .filter((row) => classifyAssetType(String(row["@assetType"] ?? "")) === "season")
     .map(optionFromRecord)
     .filter((item): item is CatalogAssetOption => item !== null);
 

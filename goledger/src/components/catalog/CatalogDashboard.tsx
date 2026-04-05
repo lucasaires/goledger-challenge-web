@@ -15,7 +15,6 @@ import { useCatalogData } from "./useCatalogData";
 import {
   buildCreateFields,
   catalogAssetCreationOptions,
-  extractCreationOptionsFromRows,
   type CatalogAssetCreationType,
 } from "./catalog-create-forms";
 
@@ -91,6 +90,7 @@ export function CatalogDashboard() {
     handleDelete,
     setEditingStatusMessage,
     setCreateStatusMessage,
+    creationOptions,
   } = useCatalogData();
 
   useEffect(() => {
@@ -100,10 +100,6 @@ export function CatalogDashboard() {
   useEffect(() => {
     void handleFilter({ term: "", category: "all" });
   }, [handleFilter]);
-
-  const creationOptions = useMemo(() => {
-    return extractCreationOptionsFromRows(rows);
-  }, [rows]);
 
   const activeFormAssetType = (editingRow?.assetType as CatalogAssetCreationType | undefined) ?? createAssetType;
 

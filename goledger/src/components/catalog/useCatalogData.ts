@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goledger";
 import {
   buildCatalogSearchSelector,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/goledger/catalog-mappers";
 import {
   buildCreatePayload,
+  type CatalogAssetOption,
   type CatalogAssetCreationType,
 } from "./catalog-create-forms";
 import type { CatalogRecord } from "@/lib/goledger";
@@ -18,12 +19,40 @@ export type CatalogFormValues = Record<string, string>;
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 
+function optionFromRecord(record: Record<string, unknown>) {
+  const title = String(record.title ?? record.name ?? record.id ?? "");
+  const key = String(record["@key"] ?? record.id ?? "");
+  const number = String(record.number ?? "");
+
+  if (!key) {
+    return null;
+  }
+
+  if (title) {
+    const label = number ? `${title} - temporada ${number} (${key})` : `${title} (${key})`;
+    return { label, value: key };
+  }
+
+  if (number) {
+    return { label: `Temporada ${number} (${key})`, value: key };
+  }
+
+  return { label: key, value: key };
+}
+
 export function useCatalogData() {
   const [rows, setRows] = useState<CatalogRecord[]>([]);
   const [isFiltering, setIsFiltering] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Carregando registros da API...");
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
   const [totalRows, setTotalRows] = useState(0);
+  const [creationOptions, setCreationOptions] = useState<{
+    tvShows: CatalogAssetOption[];
+    seasons: CatalogAssetOption[];
+  }>({
+    tvShows: [],
+    seasons: [],
+  });
   const latestRequestId = useRef(0);
 
   const stats = useMemo(() => {
@@ -59,6 +88,45 @@ export function useCatalogData() {
       { label: "Watchlists", value: pageWatchlists },
     ];
   }, [rows]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCreationOptions = async () => {
+      try {
+        const [tvShowResponse, seasonResponse] = await Promise.all([
+          searchAssets({ selector: { "@assetType": { $in: ["tvShows"] } }, limit: 1000 }),
+          searchAssets({ selector: { "@assetType": { $in: ["seasons"] } }, limit: 1000 }),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        const tvShows = parseSearchResult(tvShowResponse)
+          .map(optionFromRecord)
+          .filter((item): item is CatalogAssetOption => item !== null);
+
+        const seasons = parseSearchResult(seasonResponse)
+          .map(optionFromRecord)
+          .filter((item): item is CatalogAssetOption => item !== null);
+
+        setCreationOptions({ tvShows, seasons });
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setCreationOptions({ tvShows: [], seasons: [] });
+      }
+    };
+
+    void loadCreationOptions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const loadAllRows = useCallback(async (filters: CatalogFilterValues) => {
     const requestId = ++latestRequestId.current;
@@ -201,5 +269,6 @@ export function useCatalogData() {
     handleDelete,
     setEditingStatusMessage,
     setCreateStatusMessage,
+    creationOptions,
   };
 }
