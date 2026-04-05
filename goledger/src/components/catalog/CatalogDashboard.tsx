@@ -85,17 +85,12 @@ export function CatalogDashboard() {
     isFiltering,
     statusMessage,
     stats,
-    currentPage,
     rowsPerPage,
-    totalRows,
     handleFilter,
-    handlePageChange,
-    handleRowsPerPageChange,
     handleCreateOrUpdate,
     handleDelete,
     setEditingStatusMessage,
     setCreateStatusMessage,
-    creationOptions: apiCreationOptions,
   } = useCatalogData();
 
   useEffect(() => {
@@ -107,17 +102,8 @@ export function CatalogDashboard() {
   }, [handleFilter]);
 
   const creationOptions = useMemo(() => {
-    const rowOptions = extractCreationOptionsFromRows(rows);
-
-    return {
-      tvShows: [...apiCreationOptions.tvShows, ...rowOptions.tvShows].filter((option, index, list) => (
-        list.findIndex((candidate) => candidate.value === option.value) === index
-      )),
-      seasons: [...apiCreationOptions.seasons, ...rowOptions.seasons].filter((option, index, list) => (
-        list.findIndex((candidate) => candidate.value === option.value) === index
-      )),
-    };
-  }, [apiCreationOptions, rows]);
+    return extractCreationOptionsFromRows(rows);
+  }, [rows]);
 
   const activeFormAssetType = (editingRow?.assetType as CatalogAssetCreationType | undefined) ?? createAssetType;
 
@@ -321,13 +307,8 @@ export function CatalogDashboard() {
               caption="Lista de registros"
               columns={catalogColumns}
               rows={rows}
-              totalRows={totalRows}
-              currentPage={currentPage}
               rowsPerPage={rowsPerPage}
               isLoading={isFiltering}
-              useServerPagination
-              onPageChange={handlePageChange}
-              onRowsPerPageChange={handleRowsPerPageChange}
               onRowClick={handleOpenDetailsModal}
               onEdit={handleEdit}
               onDelete={handleRequestDelete}
