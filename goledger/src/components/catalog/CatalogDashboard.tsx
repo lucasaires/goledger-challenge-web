@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { format, isValid, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import Modal from "react-modal";
 import { ToastContainer, toast } from "react-toastify";
-import { Ban, X } from "lucide-react";
-import { CrudForm, DataTable, FilterBar } from "@/components/catalog";
+import { Ban } from "lucide-react";
+import { DataTable, FilterBar } from "@/components/catalog";
 import { StatCard, Topbar, WorkspacePanel } from "@/components/dashboard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "../../app/page.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 import { useCatalogData } from "./useCatalogData";
+import { CatalogCreateFlowModals } from "./CatalogCreateFlowModals";
+import { CatalogDetailModal } from "./CatalogDetailModal";
 import {
   buildCreateFields,
   catalogAssetCreationOptions,
@@ -19,19 +19,6 @@ import {
 } from "./catalog-create-forms";
 
 const catalogColumns = ["Nome", "Categoria", "Status"];
-
-const detailLabelByKey: Record<string, string> = {
-  title: "Titulo",
-  description: "Descricao",
-  recommendedAge: "Idade recomendada",
-  number: "Numero",
-  seasonNumber: "Numero da temporada",
-  episodeNumber: "Numero do episodio",
-  rating: "Avaliacao",
-  releaseDate: "Data de lancamento",
-  year: "Ano",
-  tvShowsKeys: "Series",
-};
 
 function getCreationTypeLabel(assetType: CatalogAssetCreationType | null) {
   if (!assetType) {
@@ -43,33 +30,6 @@ function getCreationTypeLabel(assetType: CatalogAssetCreationType | null) {
 
 function getRecordLabel(values: Record<string, string>) {
   return values.title ?? values.number ?? values.episodeNumber ?? "registro";
-}
-
-function formatDetailKey(key: string) {
-  if (detailLabelByKey[key]) {
-    return detailLabelByKey[key];
-  }
-
-  return key
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .replace(/^./, (char) => char.toUpperCase());
-}
-
-function formatDetailValue(key: string, value: string) {
-  if (key === "releaseDate") {
-    const parsedDate = parseISO(value);
-
-    if (isValid(parsedDate)) {
-      return format(parsedDate, "dd/MM/yyyy 'as' HH:mm", { locale: ptBR });
-    }
-  }
-
-  if (key === "recommendedAge") {
-    return `${value} anos`;
-  }
-
-  return value;
 }
 
 export function CatalogDashboard() {
@@ -113,10 +73,37 @@ export function CatalogDashboard() {
     return buildCreateFields(activeFormAssetType, creationOptions);
   }, [activeFormAssetType, creationOptions]);
 
-  const formValues = editingRow?.values;
   const isEditingMode = Boolean(editingRow);
   const formLabel = isEditingMode ? "Atualizar" : "Salvar";
   const cancelLabel = isEditingMode ? "Cancelar" : "Limpar";
+
+  const tableRows = useMemo(() => {
+    const tvShowByKey = new Map(creationOptions.tvShows.map((option) => [option.value, option.label]));
+
+    return rows.map((row) => {
+      const bucket = row.assetType.toLowerCase();
+      const isSeason = bucket.includes("season") || bucket.includes("temporad");
+
+      if (!isSeason) {
+        return row;
+      }
+
+      const seasonNumber = row.values.number?.trim();
+      const relatedTitle = row.values.tvShowKey ? tvShowByKey.get(row.values.tvShowKey) : undefined;
+
+      if (!seasonNumber && !relatedTitle) {
+        return row;
+      }
+
+      const seasonLabel = seasonNumber ? `Temporada ${seasonNumber}` : "Temporada";
+      const nameLabel = relatedTitle ? `${relatedTitle} - ${seasonLabel}` : seasonLabel;
+
+      return {
+        ...row,
+        cells: [nameLabel, row.cells[1], row.cells[2]],
+      };
+    });
+  }, [creationOptions.tvShows, rows]);
 
   const handleCreate = async (values: Record<string, string>) => {
     const recordLabel = getRecordLabel(values);
@@ -238,45 +225,6 @@ export function CatalogDashboard() {
     }
   };
 
-  const detailEntries = useMemo(() => {
-    if (!selectedRow) {
-      return [] as Array<[string, string]>;
-    }
-
-    const priority = [
-      "title",
-      "description",
-      "recommendedAge",
-      "number",
-      "seasonNumber",
-      "episodeNumber",
-      "rating",
-      "releaseDate",
-      "year",
-    ];
-
-    return Object.entries(selectedRow.values)
-      .filter(([, value]) => value.trim().length > 0)
-      .sort(([leftKey], [rightKey]) => {
-        const leftIndex = priority.indexOf(leftKey);
-        const rightIndex = priority.indexOf(rightKey);
-
-        if (leftIndex === -1 && rightIndex === -1) {
-          return leftKey.localeCompare(rightKey);
-        }
-
-        if (leftIndex === -1) {
-          return 1;
-        }
-
-        if (rightIndex === -1) {
-          return -1;
-        }
-
-        return leftIndex - rightIndex;
-      });
-  }, [selectedRow]);
-
   const relationshipLabelByKey = useMemo(() => {
     const labels = new Map<string, string>();
 
@@ -291,23 +239,34 @@ export function CatalogDashboard() {
     return labels;
   }, [creationOptions]);
 
-  const formatDetailEntryValue = (key: string, value: string) => {
-    if (key === "tvShowKey" || key === "seasonKey") {
-      return relationshipLabelByKey.get(value) ?? value;
+  const detailHeaderTitle = useMemo(() => {
+    if (!selectedRow) {
+      return "Registro";
     }
 
-    if (key === "tvShowsKeys") {
-      const labels = value
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .map((item) => relationshipLabelByKey.get(item) ?? item);
+    const isSeason = selectedRow.assetType.toLowerCase().includes("season") || selectedRow.assetType.toLowerCase().includes("temporad");
 
-      return labels.join(", ");
+    if (!isSeason) {
+      return selectedRow.values.title ?? "Registro";
     }
 
-    return formatDetailValue(key, value);
-  };
+    const relatedTitle = selectedRow.values.tvShowKey ? relationshipLabelByKey.get(selectedRow.values.tvShowKey) : undefined;
+    const seasonNumber = selectedRow.values.number?.trim();
+
+    if (relatedTitle && seasonNumber) {
+      return `${relatedTitle} - Temporada ${seasonNumber}`;
+    }
+
+    if (relatedTitle) {
+      return relatedTitle;
+    }
+
+    if (seasonNumber) {
+      return `Temporada ${seasonNumber}`;
+    }
+
+    return selectedRow.values.title ?? "Registro";
+  }, [relationshipLabelByKey, selectedRow]);
 
   return (
     <div className={styles.page}>
@@ -337,7 +296,7 @@ export function CatalogDashboard() {
             <DataTable
               caption="Lista de registros"
               columns={catalogColumns}
-              rows={rows}
+              rows={tableRows}
               rowsPerPage={rowsPerPage}
               isLoading={isFiltering}
               onRowClick={handleOpenDetailsModal}
@@ -350,90 +309,29 @@ export function CatalogDashboard() {
         <WorkspacePanel title="Area de trabalho" description={statusMessage} />
       </main>
 
-      <Modal
-        isOpen={isCreateTypeModalOpen}
-        onRequestClose={handleCloseCreateTypeModal}
-        contentLabel="Selecionar tipo de registro"
-        className={styles.confirmModal}
-        overlayClassName={styles.formModalOverlay}
-      >
-        <div className={styles.confirmModalContent}>
-          <h3>Novo registro</h3>
-          <p>Escolha o tipo de asset para abrir o formulario correto.</p>
-          <div className={styles.selectionModalActions}>
-            {catalogAssetCreationOptions.map((option) => (
-              <button key={option.value} type="button" className={styles.selectionModalButton} onClick={() => handleSelectCreateType(option.value)}>
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Modal>
+      <CatalogCreateFlowModals
+        isCreateTypeModalOpen={isCreateTypeModalOpen}
+        isFormModalOpen={isFormModalOpen}
+        isEditingMode={isEditingMode}
+        formTitle={editingRow ? `Editando ${editingRow.values.title}` : `Novo ${getCreationTypeLabel(createAssetType)}`}
+        formDescription={editingRow ? "Atualize os dados do registro selecionado." : "Base para criar assets da aplicacao a partir da API."}
+        fields={formFields}
+        initialValues={editingRow?.values}
+        submitLabel={formLabel}
+        cancelLabel={isEditingMode ? cancelLabel : "Voltar"}
+        onRequestCloseCreateTypeModal={handleCloseCreateTypeModal}
+        onRequestCloseFormModal={handleCloseModal}
+        onSelectCreateType={handleSelectCreateType}
+        onSubmit={handleCreate}
+        onCancel={handleReturnToTypeSelection}
+      />
 
-      <Modal
-        isOpen={isFormModalOpen}
-        onRequestClose={handleCloseModal}
-        contentLabel="Formulario de cadastro"
-        className={styles.formModal}
-        overlayClassName={styles.formModalOverlay}
-      >
-        <div className={styles.formModalHeader}>
-          <button type="button" onClick={handleCloseModal} aria-label="Cancelar formulario">
-            <span className={styles.actionLabel}>
-              <X size={16} aria-hidden="true" />
-              <span>{isEditingMode ? "Fechar" : "Cancelar"}</span>
-            </span>
-          </button>
-        </div>
-
-        <CrudForm
-          title={editingRow ? `Editando ${editingRow.values.title}` : `Novo ${getCreationTypeLabel(createAssetType)}`}
-          description={editingRow ? "Atualize os dados do registro selecionado." : "Base para criar assets da aplicacao a partir da API."}
-          fields={formFields}
-          initialValues={formValues}
-          submitLabel={formLabel}
-          cancelLabel={isEditingMode ? cancelLabel : "Voltar"}
-          onSubmit={handleCreate}
-          onCancel={handleReturnToTypeSelection}
-        />
-      </Modal>
-
-      <Modal
-        isOpen={Boolean(selectedRow)}
-        onRequestClose={handleCloseDetailsModal}
-        contentLabel="Detalhes do registro"
-        className={styles.detailsModal}
-        overlayClassName={styles.formModalOverlay}
-      >
-        <div className={styles.detailsModalHeader}>
-          <h3>Detalhes do registro</h3>
-          <button type="button" onClick={handleCloseDetailsModal} aria-label="Fechar detalhes">
-            <span className={styles.actionLabel}>
-              <X size={16} aria-hidden="true" />
-              <span>Fechar</span>
-            </span>
-          </button>
-        </div>
-
-        <section className={styles.detailsHighlight}>
-          <h4>{selectedRow?.values.title ?? "Registro"}</h4>
-          <div className={styles.detailsMeta}>
-            <span>{selectedRow?.assetType ?? "-"}</span>
-            <span>{selectedRow?.cells[2] ?? "-"}</span>
-          </div>
-        </section>
-
-        <p className={styles.detailsSectionTitle}>Informacoes do item</p>
-
-        <dl className={styles.detailsGrid}>
-          {detailEntries.map(([key, value]) => (
-            <div key={key} className={key === "description" ? styles.detailsDescription : undefined}>
-              <dt>{formatDetailKey(key)}</dt>
-              <dd>{formatDetailEntryValue(key, value)}</dd>
-            </div>
-          ))}
-        </dl>
-      </Modal>
+      <CatalogDetailModal
+        selectedRow={selectedRow}
+        relationshipLabelByKey={relationshipLabelByKey}
+        detailHeaderTitle={detailHeaderTitle}
+        onClose={handleCloseDetailsModal}
+      />
 
       <Modal
         isOpen={Boolean(rowToDelete)}

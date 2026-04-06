@@ -85,6 +85,26 @@ export function normalizeRows(assets: Record<string, unknown>[]): CatalogRecord[
         continue;
       }
 
+      if (key === "tvShow" && typeof value === "object" && value !== null) {
+        const relatedKey = String((value as Record<string, unknown>)["@key"] ?? "").trim();
+
+        if (relatedKey) {
+          values.tvShowKey = relatedKey;
+        }
+
+        continue;
+      }
+
+      if (key === "season" && typeof value === "object" && value !== null) {
+        const relatedKey = String((value as Record<string, unknown>)["@key"] ?? "").trim();
+
+        if (relatedKey) {
+          values.seasonKey = relatedKey;
+        }
+
+        continue;
+      }
+
       if (key === "tvShows" && Array.isArray(value)) {
         const tvShowKeys = value
           .map((item) => {

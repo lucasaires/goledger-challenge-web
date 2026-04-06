@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Ban } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "./crud-form.module.scss";
 
@@ -287,7 +286,6 @@ export function CrudForm({
             }}
           >
             <span className={styles.actionLabel}>
-              <Ban size={16} aria-hidden="true" />
               <span>{cancelLabel}</span>
             </span>
           </button>
