@@ -3,7 +3,7 @@
 import Modal from "react-modal";
 import { X } from "lucide-react";
 import { CrudForm } from "@/components/catalog";
-import styles from "../../app/page.module.scss";
+import styles from "./catalog-shell.module.scss";
 import { catalogAssetCreationOptions, type CatalogAssetCreationType } from "./catalog-create-forms";
 import type { Field } from "./CrudForm";
 

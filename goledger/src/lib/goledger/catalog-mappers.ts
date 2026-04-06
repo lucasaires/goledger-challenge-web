@@ -138,33 +138,6 @@ export function normalizeRows(assets: Record<string, unknown>[]): CatalogRecord[
   });
 }
 
-export function parseRecommendedAge(value: string) {
-  const parsedValue = Number(value);
-
-  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-    throw new Error("Idade recomendada invalida. Informe um numero maior ou igual a zero.");
-  }
-
-  return parsedValue;
-}
-
-export function uniqueAssets(assets: Record<string, unknown>[]) {
-  const seen = new Set<string>();
-
-  return assets.filter((asset) => {
-    const assetType = String(asset["@assetType"] ?? "asset");
-    const keyValue = String(asset["@key"] ?? asset.title ?? asset.id ?? asset.code ?? "");
-    const key = `${assetType}:${keyValue}`;
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-}
-
 export function filterRowsByTerm(
   items: CatalogRecord[],
   term: string,

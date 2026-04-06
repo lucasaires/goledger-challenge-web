@@ -5,7 +5,7 @@ import Modal from "react-modal";
 import { X } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import styles from "../../app/page.module.scss";
+import styles from "./catalog-shell.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 
 type RelationshipLabelMap = Map<string, string>;

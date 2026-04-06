@@ -1,12 +1,7 @@
 import type { Field } from "./CrudForm";
-import { classifyAssetType } from "@/lib/goledger/catalog-mappers";
+import type { CatalogAssetOption } from "./catalog-option-utils";
 
 export type CatalogAssetCreationType = "tvShows" | "seasons" | "episodes" | "watchlist";
-
-export type CatalogAssetOption = {
-  label: string;
-  value: string;
-};
 
 export const catalogAssetCreationOptions: Array<{ label: string; value: CatalogAssetCreationType }> = [
   { label: "Serie", value: "tvShows" },
@@ -14,27 +9,6 @@ export const catalogAssetCreationOptions: Array<{ label: string; value: CatalogA
   { label: "Episodio", value: "episodes" },
   { label: "Watchlist", value: "watchlist" },
 ];
-
-function optionFromRecord(record: Record<string, unknown>) {
-  const title = String(record.title ?? record.name ?? record.id ?? "");
-  const key = String(record["@key"] ?? record.key ?? record.title ?? record.id ?? record.number ?? "");
-  const number = String(record.number ?? "");
-
-  if (!key) {
-    return null;
-  }
-
-  if (title) {
-    const label = number ? `${title} - temporada ${number}` : title;
-    return { label, value: key };
-  }
-
-  if (number) {
-    return { label: `Temporada ${number}`, value: key };
-  }
-
-  return { label: key, value: key };
-}
 
 export function buildCreateFields(
   assetType: CatalogAssetCreationType,
@@ -166,18 +140,4 @@ export function buildCreatePayload(assetType: CatalogAssetCreationType, values: 
       "@key": key,
     })),
   };
-}
-
-export function extractCreationOptionsFromRows(rows: Array<Record<string, unknown>>) {
-  const tvShows = rows
-    .filter((row) => String(row["@assetType"] ?? "") === "tvShows")
-    .map(optionFromRecord)
-    .filter((item): item is CatalogAssetOption => item !== null);
-
-  const seasons = rows
-    .filter((row) => classifyAssetType(String(row["@assetType"] ?? "")) === "season")
-    .map(optionFromRecord)
-    .filter((item): item is CatalogAssetOption => item !== null);
-
-  return { tvShows, seasons };
 }

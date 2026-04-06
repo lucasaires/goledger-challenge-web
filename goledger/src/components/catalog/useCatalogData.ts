@@ -10,9 +10,9 @@ import {
 } from "@/lib/goledger/catalog-mappers";
 import {
   buildCreatePayload,
-  type CatalogAssetOption,
   type CatalogAssetCreationType,
 } from "./catalog-create-forms";
+import { optionFromRecord, type CatalogAssetOption } from "./catalog-option-utils";
 import type { CatalogRecord } from "@/lib/goledger";
 import type { CatalogFilterValues } from "@/components/catalog/FilterBar";
 
@@ -40,27 +40,6 @@ function mapAssetTypeToCreationType(assetType: string): CatalogAssetCreationType
 
 function getRecordLabel(values: CatalogFormValues) {
   return values.title ?? values.number ?? values.episodeNumber ?? "registro";
-}
-
-function optionFromRecord(record: Record<string, unknown>) {
-  const title = String(record.title ?? record.name ?? record.id ?? "");
-  const key = String(record["@key"] ?? record.key ?? record.title ?? record.id ?? record.number ?? "");
-  const number = String(record.number ?? "");
-
-  if (!key) {
-    return null;
-  }
-
-  if (title) {
-    const label = number ? `${title} - temporada ${number}` : title;
-    return { label, value: key };
-  }
-
-  if (number) {
-    return { label: `Temporada ${number}`, value: key };
-  }
-
-  return { label: key, value: key };
 }
 
 export function useCatalogData() {

@@ -7,7 +7,7 @@ import { Ban } from "lucide-react";
 import { DataTable, FilterBar } from "@/components/catalog";
 import { StatCard, Topbar, WorkspacePanel } from "@/components/dashboard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import styles from "../../app/page.module.scss";
+import styles from "./catalog-shell.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 import { useCatalogData } from "./useCatalogData";
 import { CatalogCreateFlowModals } from "./CatalogCreateFlowModals";
