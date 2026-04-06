@@ -1,4 +1,4 @@
-import type { CatalogRecord } from "@/lib/goledger";
+import type { CatalogRecord } from "@/services/goledger";
 import type { CatalogAssetOption } from "./catalog-option-utils";
 
 type CreationOptions = {

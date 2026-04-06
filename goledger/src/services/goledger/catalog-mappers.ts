@@ -75,7 +75,6 @@ export function normalizeRows(assets: Record<string, unknown>[]): CatalogRecord[
       recommendedAge,
     };
 
-    // Keep primitive properties from asset payload so details modal can show type-specific fields.
     for (const [key, value] of Object.entries(asset)) {
       if (key.startsWith("@")) {
         continue;

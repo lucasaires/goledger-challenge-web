@@ -1,4 +1,4 @@
-import styles from "./topbar.module.scss";
+import styles from "../styles/topbar.module.scss";
 
 type TopbarProps = {
   title: string;

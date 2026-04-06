@@ -1,6 +1,6 @@
-import { classifyAssetType } from "@/lib/goledger/catalog-mappers";
+import { classifyAssetType } from "@/services/goledger/catalog-mappers";
 import type { CatalogAssetCreationType } from "./catalog-create-forms";
-import type { CatalogRecord } from "@/lib/goledger";
+import type { CatalogRecord } from "@/services/goledger";
 
 export const DEFAULT_ROWS_PER_PAGE = 10;
 

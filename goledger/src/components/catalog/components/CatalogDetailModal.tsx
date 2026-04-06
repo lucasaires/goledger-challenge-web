@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import Modal from "react-modal";
 import { X } from "lucide-react";
 import styles from "../styles/catalog-shell.module.scss";
-import type { CatalogRecord } from "@/lib/goledger";
+import type { CatalogRecord } from "@/services/goledger";
 import {
   buildDetailEntries,
   buildDetailHeaderTitle,

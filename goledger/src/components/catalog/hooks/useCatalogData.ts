@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goledger";
+import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/services/goledger";
 import {
   buildCatalogSearchSelector,
   filterRowsByTerm,
   mapCategoryToAssetType,
   normalizeRows,
   parseSearchResult,
-} from "@/lib/goledger/catalog-mappers";
+} from "@/services/goledger/catalog-mappers";
 import { buildCreatePayload, type CatalogAssetCreationType } from "../utils/catalog-create-forms";
 import { optionFromRecord, type CatalogAssetOption } from "../utils/catalog-option-utils";
-import type { CatalogRecord } from "@/lib/goledger";
+import type { CatalogRecord } from "@/services/goledger";
 import type { CatalogFilterValues } from "../utils/catalog-filter";
 import {
   buildCreatedRow,

@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import ReactDataTable, { type TableColumn } from "react-data-table-component";
 import { Edit3, Trash2 } from "lucide-react";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LoadingSpinner } from "@/components/shared/ui/LoadingSpinner";
 import styles from "../styles/data-table.module.scss";
-import type { CatalogRecord } from "@/lib/goledger";
+import type { CatalogRecord } from "@/services/goledger";
 
 type DataTableProps = {
   caption: string;

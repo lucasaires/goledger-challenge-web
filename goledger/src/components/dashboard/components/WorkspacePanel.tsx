@@ -1,4 +1,4 @@
-import styles from "./workspace-panel.module.scss";
+import styles from "../styles/workspace-panel.module.scss";
 
 type WorkspacePanelProps = {
   title: string;

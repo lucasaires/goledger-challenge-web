@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LoadingSpinner } from "@/components/shared/ui/LoadingSpinner";
 import styles from "../styles/filter-bar.module.scss";
 import type { CatalogFilterValues } from "../utils/catalog-filter";
 

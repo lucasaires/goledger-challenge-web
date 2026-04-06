@@ -1,6 +1,6 @@
 import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { CatalogRecord } from "@/lib/goledger";
+import type { CatalogRecord } from "@/services/goledger";
 
 const detailLabelByKey: Record<string, string> = {
   title: "Titulo",

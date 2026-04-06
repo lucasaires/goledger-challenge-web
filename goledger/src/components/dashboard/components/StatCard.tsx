@@ -1,4 +1,4 @@
-import styles from "./stat-card.module.scss";
+import styles from "../styles/stat-card.module.scss";
 
 type StatCardProps = {
   label: string;

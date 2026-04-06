@@ -1,3 +1,3 @@
-export { StatCard } from "./StatCard";
-export { Topbar } from "./Topbar";
-export { WorkspacePanel } from "./WorkspacePanel";
+export { StatCard } from "./components/StatCard";
+export { Topbar } from "./components/Topbar";
+export { WorkspacePanel } from "./components/WorkspacePanel";

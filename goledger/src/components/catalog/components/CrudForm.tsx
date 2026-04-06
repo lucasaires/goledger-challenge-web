@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LoadingSpinner } from "@/components/shared/ui/LoadingSpinner";
 import styles from "../styles/crud-form.module.scss";
 import { CrudFormField } from "./CrudFormField";
 import type { Field } from "../utils/catalog-form-types";
