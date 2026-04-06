@@ -3,6 +3,8 @@ import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goled
 import {
   buildCatalogSearchSelector,
   classifyAssetType,
+  filterRowsByTerm,
+  mapCategoryToAssetType,
   normalizeRows,
   parseSearchResult,
 } from "@/lib/goledger/catalog-mappers";
@@ -110,6 +112,11 @@ export function useCatalogData() {
     ];
   }, [rows]);
 
+  const tvShowLabelByKey = useMemo(
+    () => new Map(creationOptions.tvShows.map((option) => [option.value, option.label])),
+    [creationOptions.tvShows],
+  );
+
   const loadCreationOptions = useCallback(async () => {
     try {
       const [tvShowResponse, seasonResponse] = await Promise.all([
@@ -137,7 +144,12 @@ export function useCatalogData() {
 
   const loadAllRows = useCallback(async (filters: CatalogFilterValues) => {
     const requestId = ++latestRequestId.current;
-    const selector = buildCatalogSearchSelector(filters);
+    const categoryBucket = mapCategoryToAssetType(filters.category);
+    const selector = categoryBucket === "season"
+      ? {
+          "@assetType": { $in: ["seasons", "season"] },
+        }
+      : buildCatalogSearchSelector(filters);
 
     try {
       setIsFiltering(true);
@@ -151,14 +163,20 @@ export function useCatalogData() {
       }
 
       const normalizedRows = normalizeRows(parseSearchResult(response));
+      const filteredRows = categoryBucket === "season"
+        ? filterRowsByTerm(normalizedRows, filters.term, (item) => {
+            const relatedKey = item.values.tvShowKey;
+            return relatedKey ? tvShowLabelByKey.get(relatedKey) : undefined;
+          })
+        : normalizedRows;
 
-      setRows(normalizedRows);
+      setRows(filteredRows);
       setRowsPerPage(DEFAULT_ROWS_PER_PAGE);
-      setTotalRows(normalizedRows.length);
+      setTotalRows(filteredRows.length);
       setStatusMessage(
         filters.term.trim()
-          ? `${normalizedRows.length} registro(s) encontrados.`
-          : `${normalizedRows.length} registro(s) carregados.`,
+          ? `${filteredRows.length} registro(s) encontrados.`
+          : `${filteredRows.length} registro(s) carregados.`,
       );
     } catch (error) {
       if (requestId !== latestRequestId.current) {
@@ -176,7 +194,7 @@ export function useCatalogData() {
         setIsFiltering(false);
       }
     }
-  }, []);
+  }, [tvShowLabelByKey]);
 
   const handleFilter = useCallback(async (filters: CatalogFilterValues) => {
     await loadAllRows(filters);

@@ -165,7 +165,11 @@ export function uniqueAssets(assets: Record<string, unknown>[]) {
   });
 }
 
-export function filterRowsByTerm(items: CatalogRecord[], term: string) {
+export function filterRowsByTerm(
+  items: CatalogRecord[],
+  term: string,
+  getSeasonLabel?: (item: CatalogRecord) => string | undefined,
+) {
   const normalizedTerm = term.trim().toLowerCase();
 
   if (!normalizedTerm) {
@@ -173,7 +177,17 @@ export function filterRowsByTerm(items: CatalogRecord[], term: string) {
   }
 
   return items.filter((item) => {
-    const searchable = [item.id, ...item.cells, ...Object.values(item.values)].join(" ").toLowerCase();
+    const searchableParts = [item.id, ...item.cells, ...Object.values(item.values)];
+
+    if (classifyAssetType(item.assetType) === "season") {
+      const relatedLabel = getSeasonLabel?.(item);
+
+      if (relatedLabel) {
+        searchableParts.push(relatedLabel);
+      }
+    }
+
+    const searchable = searchableParts.join(" ").toLowerCase();
     return searchable.includes(normalizedTerm);
   });
 }
