@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import Modal from "react-modal";
 import { X } from "lucide-react";
-import styles from "./catalog-shell.module.scss";
+import styles from "../styles/catalog-shell.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 import {
   buildDetailEntries,
@@ -11,7 +11,7 @@ import {
   buildDetailMeta,
   formatDetailKey,
   formatDetailValue,
-} from "./catalog-detail-utils";
+} from "../utils/catalog-detail-utils";
 
 type CatalogDetailModalProps = {
   selectedRow: CatalogRecord | null;
@@ -33,6 +33,7 @@ export function CatalogDetailModal({
     if (!selectedRow) {
       return [] as Array<[string, string]>;
     }
+
     return buildDetailEntries(selectedRow, relationshipLabelByKey);
   }, [relationshipLabelByKey, selectedRow]);
 
@@ -61,6 +62,7 @@ export function CatalogDetailModal({
     if (!selectedRow) {
       return [] as string[];
     }
+
     return buildDetailMeta(selectedRow, relationshipLabelByKey);
   }, [relationshipLabelByKey, selectedRow]);
 

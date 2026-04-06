@@ -1,0 +1,59 @@
+@use "../../../styles/abstracts" as *;
+
+.tableCard {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+
+  h2 {
+    color: #0f172a;
+    font-size: 20px;
+  }
+
+  p {
+    color: #475569;
+  }
+
+  span {
+    color: #0f172a;
+    font-weight: 700;
+  }
+}
+
+.tableWrap {
+  overflow: hidden;
+}
+
+.actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.loadingState {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

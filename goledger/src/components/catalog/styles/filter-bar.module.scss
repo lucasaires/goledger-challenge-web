@@ -1,0 +1,57 @@
+@use "../../../styles/abstracts" as *;
+
+.filterBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 12px;
+  align-items: end;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.searchBox,
+.selectBox {
+  display: grid;
+  gap: 8px;
+
+  label {
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  input,
+  select {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 12px 14px;
+    font-size: 14px;
+
+    &:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+  }
+}
+
+.filterBar > button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid #3b82f6;
+  background: #3b82f6;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.buttonLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

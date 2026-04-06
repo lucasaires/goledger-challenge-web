@@ -1,7 +1,6 @@
 import { type FieldErrors, type UseFormRegister } from "react-hook-form";
-import styles from "./crud-form.module.scss";
-
-import type { Field } from "./CrudForm";
+import styles from "../styles/crud-form.module.scss";
+import type { Field } from "../utils/catalog-form-types";
 
 type CrudFormValues = Record<string, string>;
 

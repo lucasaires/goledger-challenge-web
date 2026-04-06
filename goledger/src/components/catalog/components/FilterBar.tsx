@@ -2,12 +2,8 @@
 
 import { useState } from "react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import styles from "./filter-bar.module.scss";
-
-export type CatalogFilterValues = {
-  term: string;
-  category: string;
-};
+import styles from "../styles/filter-bar.module.scss";
+import type { CatalogFilterValues } from "../utils/catalog-filter";
 
 type FilterBarProps = {
   searchPlaceholder: string;

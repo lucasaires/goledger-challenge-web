@@ -7,35 +7,29 @@ import {
   normalizeRows,
   parseSearchResult,
 } from "@/lib/goledger/catalog-mappers";
-import {
-  buildCreatePayload,
-  type CatalogAssetCreationType,
-} from "./catalog-create-forms";
-import { optionFromRecord, type CatalogAssetOption } from "./catalog-option-utils";
+import { buildCreatePayload, type CatalogAssetCreationType } from "../utils/catalog-create-forms";
+import { optionFromRecord, type CatalogAssetOption } from "../utils/catalog-option-utils";
 import type { CatalogRecord } from "@/lib/goledger";
-import type { CatalogFilterValues } from "@/components/catalog/FilterBar";
+import type { CatalogFilterValues } from "../utils/catalog-filter";
 import {
   buildCreatedRow,
   buildPageStats,
   buildUpdatedRows,
-  DEFAULT_ROWS_PER_PAGE,
   getRecordLabel,
   mapAssetTypeToCreationType,
   type CatalogFormValues,
-} from "./catalog-data-utils";
+} from "../utils/catalog-data-utils";
 
 export function useCatalogData() {
   const [rows, setRows] = useState<CatalogRecord[]>([]);
   const [isFiltering, setIsFiltering] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Carregando registros da API...");
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
-  const [totalRows, setTotalRows] = useState(0);
   const [creationOptions, setCreationOptions] = useState<{
     tvShows: CatalogAssetOption[];
     seasons: CatalogAssetOption[];
   }>({
     tvShows: [],
-    seasons: [],
+    seasons: []
   });
   const latestRequestId = useRef(0);
 
@@ -100,8 +94,6 @@ export function useCatalogData() {
         : normalizedRows;
 
       setRows(filteredRows);
-      setRowsPerPage(DEFAULT_ROWS_PER_PAGE);
-      setTotalRows(filteredRows.length);
       setStatusMessage(
         filters.term.trim()
           ? `${filteredRows.length} registro(s) encontrados.`
@@ -157,7 +149,6 @@ export function useCatalogData() {
     void loadCreationOptions();
 
     setRows((currentRows) => [buildCreatedRow(assetType, values), ...currentRows]);
-    setTotalRows((currentTotalRows) => currentTotalRows + 1);
 
     setStatusMessage(`Registro ${values.title ?? values.number ?? values.episodeNumber} criado com sucesso na blockchain.`);
     return { mode: "created" as const, title: values.title };
@@ -171,7 +162,6 @@ export function useCatalogData() {
     void loadCreationOptions();
 
     setRows((currentRows) => currentRows.filter((currentRow) => currentRow.id !== row.id));
-    setTotalRows((currentTotalRows) => Math.max(0, currentTotalRows - 1));
     setStatusMessage(`Registro ${row.values.title} removido com sucesso.`);
     return { title: row.values.title, id: row.id };
   }, [loadCreationOptions]);
@@ -189,8 +179,6 @@ export function useCatalogData() {
     isFiltering,
     statusMessage,
     stats,
-    rowsPerPage,
-    totalRows,
     handleFilter,
     handleCreateOrUpdate,
     handleDelete,

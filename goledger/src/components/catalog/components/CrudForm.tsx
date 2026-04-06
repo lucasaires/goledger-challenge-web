@@ -5,19 +5,9 @@ import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import styles from "./crud-form.module.scss";
+import styles from "../styles/crud-form.module.scss";
 import { CrudFormField } from "./CrudFormField";
-
-export type Field = {
-  label: string;
-  name: string;
-  placeholder: string;
-  type?: string;
-  as?: "input" | "textarea" | "select" | "search-select" | "tag-select";
-  required?: boolean;
-  readOnly?: boolean;
-  options?: Array<{ label: string; value: string }>;
-};
+import type { Field } from "../utils/catalog-form-types";
 
 type CrudFormValues = Record<string, string>;
 
@@ -115,12 +105,12 @@ function CrudFormInner({
     mode: "onTouched",
   });
 
+  const watchedValues = useWatch({ control });
+
   const submitForm = handleSubmit(async (values) => {
     await onSubmit?.(values);
     reset(defaultValues);
   });
-
-  const watchedValues = useWatch({ control });
 
   return (
     <section className={styles.formCard} aria-label={title}>

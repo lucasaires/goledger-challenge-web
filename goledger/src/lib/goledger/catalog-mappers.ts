@@ -1,4 +1,4 @@
-import type { CatalogFilterValues } from "@/components/catalog/FilterBar";
+import type { CatalogFilterValues } from "@/components/catalog/utils/catalog-filter";
 import type { CatalogRecord } from "./types";
 
 export const assetTypeAliases = {

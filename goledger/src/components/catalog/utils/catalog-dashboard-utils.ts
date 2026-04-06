@@ -1,5 +1,4 @@
 import type { CatalogRecord } from "@/lib/goledger";
-import type { CatalogAssetCreationType } from "./catalog-create-forms";
 import type { CatalogAssetOption } from "./catalog-option-utils";
 
 type CreationOptions = {
@@ -12,7 +11,7 @@ function isSeasonAsset(assetType: string) {
   return bucket.includes("season") || bucket.includes("temporad");
 }
 
-export function getCreationTypeLabel(assetType: CatalogAssetCreationType | null) {
+export function getCreationTypeLabel(assetType: "tvShows" | "seasons" | "episodes" | "watchlist" | null) {
   if (!assetType) {
     return "registro";
   }
@@ -23,10 +22,6 @@ export function getCreationTypeLabel(assetType: CatalogAssetCreationType | null)
     episodes: "Episodio",
     watchlist: "Watchlist",
   }[assetType] ?? "registro";
-}
-
-export function getRecordLabel(values: Record<string, string>) {
-  return values.title ?? values.number ?? values.episodeNumber ?? "registro";
 }
 
 export function buildTableRows(rows: CatalogRecord[], tvShows: CatalogAssetOption[]) {
@@ -66,34 +61,4 @@ export function buildRelationshipLabelByKey(options: CreationOptions) {
   }
 
   return labels;
-}
-
-export function buildDetailHeaderTitle(
-  selectedRow: CatalogRecord | null,
-  relationshipLabelByKey: Map<string, string>,
-) {
-  if (!selectedRow) {
-    return "Registro";
-  }
-
-  if (!isSeasonAsset(selectedRow.assetType)) {
-    return selectedRow.values.title ?? "Registro";
-  }
-
-  const relatedTitle = selectedRow.values.tvShowKey ? relationshipLabelByKey.get(selectedRow.values.tvShowKey) : undefined;
-  const seasonNumber = selectedRow.values.number?.trim();
-
-  if (relatedTitle && seasonNumber) {
-    return `${relatedTitle} - Temporada ${seasonNumber}`;
-  }
-
-  if (relatedTitle) {
-    return relatedTitle;
-  }
-
-  if (seasonNumber) {
-    return `Temporada ${seasonNumber}`;
-  }
-
-  return selectedRow.values.title ?? "Registro";
 }

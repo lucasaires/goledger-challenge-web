@@ -2,10 +2,10 @@
 
 import Modal from "react-modal";
 import { X } from "lucide-react";
-import { CrudForm } from "@/components/catalog";
-import styles from "./catalog-shell.module.scss";
-import { catalogAssetCreationOptions, type CatalogAssetCreationType } from "./catalog-create-forms";
-import type { Field } from "./CrudForm";
+import { CrudForm } from "./CrudForm";
+import styles from "../styles/catalog-shell.module.scss";
+import { catalogAssetCreationOptions, type CatalogAssetCreationType } from "../utils/catalog-create-forms";
+import type { Field } from "../utils/catalog-form-types";
 
 export type CatalogCreateFlowModalsProps = {
   isCreateTypeModalOpen: boolean;

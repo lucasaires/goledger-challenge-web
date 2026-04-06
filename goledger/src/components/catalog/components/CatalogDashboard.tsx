@@ -4,19 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import Modal from "react-modal";
 import { ToastContainer, toast } from "react-toastify";
 import { Ban } from "lucide-react";
-import { DataTable, FilterBar } from "@/components/catalog";
+import { DataTable } from "./DataTable";
+import { FilterBar } from "./FilterBar";
 import { StatCard, Topbar, WorkspacePanel } from "@/components/dashboard";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import styles from "./catalog-shell.module.scss";
+import styles from "../styles/catalog-shell.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
-import { useCatalogData } from "./useCatalogData";
+import { useCatalogData } from "../hooks/useCatalogData";
 import { CatalogCreateFlowModals } from "./CatalogCreateFlowModals";
 import { CatalogDetailModal } from "./CatalogDetailModal";
-import {
-  buildCreateFields,
-  type CatalogAssetCreationType,
-} from "./catalog-create-forms";
-import { buildRelationshipLabelByKey, buildTableRows, getCreationTypeLabel, getRecordLabel } from "./catalog-dashboard-utils";
+import { buildCreateFields, type CatalogAssetCreationType } from "../utils/catalog-create-forms";
+import { buildRelationshipLabelByKey, buildTableRows, getCreationTypeLabel } from "../utils/catalog-dashboard-utils";
+import { getRecordLabel } from "../utils/catalog-data-utils";
 
 const catalogColumns = ["Nome", "Categoria", "Status"];
 
@@ -33,7 +32,6 @@ export function CatalogDashboard() {
     isFiltering,
     statusMessage,
     stats,
-    rowsPerPage,
     handleFilter,
     handleCreateOrUpdate,
     handleDelete,
@@ -221,7 +219,6 @@ export function CatalogDashboard() {
               caption="Lista de registros"
               columns={catalogColumns}
               rows={tableRows}
-              rowsPerPage={rowsPerPage}
               isLoading={isFiltering}
               onRowClick={handleOpenDetailsModal}
               onEdit={handleEdit}

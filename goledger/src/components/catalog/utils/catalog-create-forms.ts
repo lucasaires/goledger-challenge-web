@@ -1,7 +1,11 @@
-import type { Field } from "./CrudForm";
-import type { CatalogAssetOption } from "./catalog-option-utils";
+import type { Field } from "./catalog-form-types";
 
 export type CatalogAssetCreationType = "tvShows" | "seasons" | "episodes" | "watchlist";
+
+export type CatalogAssetOption = {
+  label: string;
+  value: string;
+};
 
 export const catalogAssetCreationOptions: Array<{ label: string; value: CatalogAssetCreationType }> = [
   { label: "Serie", value: "tvShows" },

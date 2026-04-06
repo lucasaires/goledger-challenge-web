@@ -2,20 +2,15 @@ import { useMemo } from "react";
 import ReactDataTable, { type TableColumn } from "react-data-table-component";
 import { Edit3, Trash2 } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import styles from "./data-table.module.scss";
+import styles from "../styles/data-table.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
 
 type DataTableProps = {
   caption: string;
   columns: string[];
   rows: CatalogRecord[];
-  totalRows?: number;
-  currentPage?: number;
   rowsPerPage?: number;
   isLoading?: boolean;
-  useServerPagination?: boolean;
-  onPageChange?: (page: number) => void | Promise<void>;
-  onRowsPerPageChange?: (newRowsPerPage: number, currentPage: number) => void | Promise<void>;
   onRowClick?: (row: CatalogRecord) => void;
   onEdit?: (row: CatalogRecord) => void;
   onDelete?: (row: CatalogRecord) => void;
@@ -25,13 +20,8 @@ export function DataTable({
   caption,
   columns,
   rows,
-  totalRows,
-  currentPage,
   rowsPerPage,
   isLoading = false,
-  useServerPagination = false,
-  onPageChange,
-  onRowsPerPageChange,
   onRowClick,
   onEdit,
   onDelete,
@@ -96,13 +86,8 @@ export function DataTable({
           data={rows}
           keyField="id"
           pagination
-          paginationServer={useServerPagination}
-          paginationTotalRows={totalRows}
-          paginationDefaultPage={currentPage}
           paginationPerPage={rowsPerPage ?? 10}
           paginationRowsPerPageOptions={[10, 25, 50, 100]}
-          onChangePage={onPageChange}
-          onChangeRowsPerPage={onRowsPerPageChange}
           progressPending={isLoading}
           progressComponent={
             <div className={styles.loadingState} role="status" aria-live="polite">

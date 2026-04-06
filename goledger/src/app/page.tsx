@@ -1,4 +1,4 @@
-import { CatalogDashboard } from "@/components/catalog/CatalogDashboard";
+import { CatalogDashboard } from "@/components/catalog";
 
 export default function Home() {
   return <CatalogDashboard />;
