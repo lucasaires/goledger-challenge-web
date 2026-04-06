@@ -32,6 +32,7 @@ export function useCatalogData() {
     seasons: []
   });
   const latestRequestId = useRef(0);
+  const lastFiltersRef = useRef<CatalogFilterValues>({ term: "", category: "all" });
 
   const stats = useMemo(() => buildPageStats(rows), [rows]);
 
@@ -67,6 +68,7 @@ export function useCatalogData() {
 
   const loadAllRows = useCallback(async (filters: CatalogFilterValues) => {
     const requestId = ++latestRequestId.current;
+    lastFiltersRef.current = filters;
     const categoryBucket = mapCategoryToAssetType(filters.category);
     const selector = categoryBucket === "season"
       ? {
@@ -134,8 +136,7 @@ export function useCatalogData() {
       };
 
       await updateAsset(updatePayload);
-
-      setRows((currentRows) => buildUpdatedRows(currentRows, editingRow.id, values));
+  await loadAllRows(lastFiltersRef.current);
 
       const recordLabel = getRecordLabel(values);
       setStatusMessage(`Registro ${recordLabel} atualizado com sucesso.`);
@@ -147,8 +148,7 @@ export function useCatalogData() {
 
     await createAsset(payload);
     void loadCreationOptions();
-
-    setRows((currentRows) => [buildCreatedRow(assetType, values), ...currentRows]);
+    await loadAllRows(lastFiltersRef.current);
 
     setStatusMessage(`Registro ${values.title ?? values.number ?? values.episodeNumber} criado com sucesso na blockchain.`);
     return { mode: "created" as const, title: values.title };
@@ -157,11 +157,11 @@ export function useCatalogData() {
   const handleDelete = useCallback(async (row: CatalogRecord) => {
     await deleteAsset({
       "@assetType": row.assetType,
-      title: row.values.title,
+      "@key": row.id,
     });
     void loadCreationOptions();
 
-    setRows((currentRows) => currentRows.filter((currentRow) => currentRow.id !== row.id));
+    await loadAllRows(lastFiltersRef.current);
     setStatusMessage(`Registro ${row.values.title} removido com sucesso.`);
     return { title: row.values.title, id: row.id };
   }, [loadCreationOptions]);
