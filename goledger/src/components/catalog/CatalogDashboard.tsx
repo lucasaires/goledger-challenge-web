@@ -30,6 +30,7 @@ const detailLabelByKey: Record<string, string> = {
   rating: "Avaliacao",
   releaseDate: "Data de lancamento",
   year: "Ano",
+  tvShowsKeys: "Series",
 };
 
 function getCreationTypeLabel(assetType: CatalogAssetCreationType | null) {
@@ -91,6 +92,7 @@ export function CatalogDashboard() {
     setEditingStatusMessage,
     setCreateStatusMessage,
     creationOptions,
+    refreshCreationOptions,
   } = useCatalogData();
 
   useEffect(() => {
@@ -146,6 +148,7 @@ export function CatalogDashboard() {
   };
 
   const handleOpenCreateModal = () => {
+    void refreshCreationOptions();
     setEditingRow(null);
     setIsCreateTypeModalOpen(true);
     setIsFormModalOpen(false);
@@ -274,6 +277,38 @@ export function CatalogDashboard() {
       });
   }, [selectedRow]);
 
+  const relationshipLabelByKey = useMemo(() => {
+    const labels = new Map<string, string>();
+
+    for (const option of creationOptions.tvShows) {
+      labels.set(option.value, option.label);
+    }
+
+    for (const option of creationOptions.seasons) {
+      labels.set(option.value, option.label);
+    }
+
+    return labels;
+  }, [creationOptions]);
+
+  const formatDetailEntryValue = (key: string, value: string) => {
+    if (key === "tvShowKey" || key === "seasonKey") {
+      return relationshipLabelByKey.get(value) ?? value;
+    }
+
+    if (key === "tvShowsKeys") {
+      const labels = value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => relationshipLabelByKey.get(item) ?? item);
+
+      return labels.join(", ");
+    }
+
+    return formatDetailValue(key, value);
+  };
+
   return (
     <div className={styles.page}>
       <Topbar
@@ -394,7 +429,7 @@ export function CatalogDashboard() {
           {detailEntries.map(([key, value]) => (
             <div key={key} className={key === "description" ? styles.detailsDescription : undefined}>
               <dt>{formatDetailKey(key)}</dt>
-              <dd>{formatDetailValue(key, value)}</dd>
+              <dd>{formatDetailEntryValue(key, value)}</dd>
             </div>
           ))}
         </dl>

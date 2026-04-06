@@ -13,7 +13,7 @@ export type Field = {
   name: string;
   placeholder: string;
   type?: string;
-  as?: "input" | "textarea" | "select" | "search-select";
+  as?: "input" | "textarea" | "select" | "search-select" | "tag-select";
   required?: boolean;
   readOnly?: boolean;
   options?: Array<{ label: string; value: string }>;
@@ -59,6 +59,7 @@ export function CrudForm({
   const schema = useMemo(() => buildSchema(fields), [fields]);
   const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
   const [openSearchField, setOpenSearchField] = useState<string | null>(null);
+  const [pendingTagSelection, setPendingTagSelection] = useState<Record<string, string>>({});
 
   const defaultValues = useMemo(
     () =>
@@ -86,6 +87,7 @@ export function CrudForm({
     reset(initialValues ?? defaultValues);
     setSearchQueries({});
     setOpenSearchField(null);
+    setPendingTagSelection({});
   }, [defaultValues, initialValues, reset]);
 
   const submitForm = handleSubmit(async (values) => {
@@ -104,9 +106,17 @@ export function CrudForm({
         {fields.map((field) => {
           const fieldError = errors[field.name];
           const selectedValue = watch(field.name);
-          const selectedOption = field.options?.find((option) => option.value === selectedValue);
+          const normalizedSelectedValue = typeof selectedValue === "string" ? selectedValue : "";
+          const selectedOption = field.options?.find((option) => option.value === normalizedSelectedValue);
           const searchValue = searchQueries[field.name] ?? "";
           const isSearchOpen = openSearchField === field.name;
+          const selectedTagKeys = normalizedSelectedValue
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
+          const selectedTags = (field.options ?? []).filter((option) => selectedTagKeys.includes(option.value));
+          const availableTagOptions = (field.options ?? []).filter((option) => !selectedTagKeys.includes(option.value));
+          const pendingTag = pendingTagSelection[field.name] ?? "";
           const filteredOptions = field.options?.filter((option) => {
             const query = searchValue.trim().toLowerCase();
 
@@ -192,6 +202,67 @@ export function CrudForm({
                     </option>
                   ))}
                 </select>
+              ) : field.as === "tag-select" ? (
+                <div className={styles.tagSelect}>
+                  <div className={styles.tagSelectControls}>
+                    <select
+                      id={field.name}
+                      value={pendingTag}
+                      disabled={field.readOnly || availableTagOptions.length === 0}
+                      onChange={(event) => {
+                        setPendingTagSelection((current) => ({ ...current, [field.name]: event.target.value }));
+                      }}
+                    >
+                      <option value="">Selecione uma serie</option>
+                      {availableTagOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className={styles.tagAddButton}
+                      disabled={field.readOnly || !pendingTag}
+                      onClick={() => {
+                        if (!pendingTag) {
+                          return;
+                        }
+
+                        const nextKeys = [...selectedTagKeys, pendingTag];
+                        setValue(field.name, nextKeys.join(","), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+                        setPendingTagSelection((current) => ({ ...current, [field.name]: "" }));
+                      }}
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+
+                  <input type="hidden" {...register(field.name)} />
+
+                  {selectedTags.length > 0 ? (
+                    <div className={styles.tagList}>
+                      {selectedTags.map((tag) => (
+                        <span key={tag.value} className={styles.tagItem}>
+                          <span>{tag.label}</span>
+                          <button
+                            type="button"
+                            disabled={field.readOnly}
+                            aria-label={`Remover ${tag.label}`}
+                            onClick={() => {
+                              const nextKeys = selectedTagKeys.filter((key) => key !== tag.value);
+                              setValue(field.name, nextKeys.join(","), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+                            }}
+                          >
+                            x
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={styles.tagHint}>Nenhuma serie selecionada.</p>
+                  )}
+                </div>
               ) : (
                 <input
                   id={field.name}

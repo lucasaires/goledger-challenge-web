@@ -85,6 +85,25 @@ export function normalizeRows(assets: Record<string, unknown>[]): CatalogRecord[
         continue;
       }
 
+      if (key === "tvShows" && Array.isArray(value)) {
+        const tvShowKeys = value
+          .map((item) => {
+            if (!item || typeof item !== "object") {
+              return "";
+            }
+
+            const keyValue = (item as Record<string, unknown>)["@key"] ?? (item as Record<string, unknown>).id;
+            return String(keyValue ?? "").trim();
+          })
+          .filter(Boolean);
+
+        if (tvShowKeys.length > 0) {
+          values.tvShowsKeys = tvShowKeys.join(",");
+        }
+
+        continue;
+      }
+
       if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
         values[key] = String(value);
       }

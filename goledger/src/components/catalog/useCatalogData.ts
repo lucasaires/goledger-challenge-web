@@ -3,7 +3,6 @@ import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goled
 import {
   buildCatalogSearchSelector,
   classifyAssetType,
-  parseRecommendedAge,
   normalizeRows,
   parseSearchResult,
 } from "@/lib/goledger/catalog-mappers";
@@ -19,9 +18,31 @@ export type CatalogFormValues = Record<string, string>;
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 
+function mapAssetTypeToCreationType(assetType: string): CatalogAssetCreationType {
+  const bucket = classifyAssetType(assetType);
+
+  if (bucket === "series") {
+    return "tvShows";
+  }
+
+  if (bucket === "season") {
+    return "seasons";
+  }
+
+  if (bucket === "episode") {
+    return "episodes";
+  }
+
+  return "watchlist";
+}
+
+function getRecordLabel(values: CatalogFormValues) {
+  return values.title ?? values.number ?? values.episodeNumber ?? "registro";
+}
+
 function optionFromRecord(record: Record<string, unknown>) {
   const title = String(record.title ?? record.name ?? record.id ?? "");
-  const key = String(record["@key"] ?? record.id ?? "");
+  const key = String(record["@key"] ?? record.key ?? record.title ?? record.id ?? record.number ?? "");
   const number = String(record.number ?? "");
 
   if (!key) {
@@ -29,12 +50,12 @@ function optionFromRecord(record: Record<string, unknown>) {
   }
 
   if (title) {
-    const label = number ? `${title} - temporada ${number} (${key})` : `${title} (${key})`;
+    const label = number ? `${title} - temporada ${number}` : title;
     return { label, value: key };
   }
 
   if (number) {
-    return { label: `Temporada ${number} (${key})`, value: key };
+    return { label: `Temporada ${number}`, value: key };
   }
 
   return { label: key, value: key };
@@ -89,44 +110,30 @@ export function useCatalogData() {
     ];
   }, [rows]);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadCreationOptions = useCallback(async () => {
+    try {
+      const [tvShowResponse, seasonResponse] = await Promise.all([
+        searchAssets({ selector: { "@assetType": { $in: ["tvShows", "tvShow"] } }, limit: 1000 }),
+        searchAssets({ selector: { "@assetType": { $in: ["seasons", "season"] } }, limit: 1000 }),
+      ]);
 
-    const loadCreationOptions = async () => {
-      try {
-        const [tvShowResponse, seasonResponse] = await Promise.all([
-          searchAssets({ selector: { "@assetType": { $in: ["tvShows"] } }, limit: 1000 }),
-          searchAssets({ selector: { "@assetType": { $in: ["seasons"] } }, limit: 1000 }),
-        ]);
+      const tvShows = parseSearchResult(tvShowResponse)
+        .map(optionFromRecord)
+        .filter((item): item is CatalogAssetOption => item !== null);
 
-        if (!isMounted) {
-          return;
-        }
+      const seasons = parseSearchResult(seasonResponse)
+        .map(optionFromRecord)
+        .filter((item): item is CatalogAssetOption => item !== null);
 
-        const tvShows = parseSearchResult(tvShowResponse)
-          .map(optionFromRecord)
-          .filter((item): item is CatalogAssetOption => item !== null);
-
-        const seasons = parseSearchResult(seasonResponse)
-          .map(optionFromRecord)
-          .filter((item): item is CatalogAssetOption => item !== null);
-
-        setCreationOptions({ tvShows, seasons });
-      } catch {
-        if (!isMounted) {
-          return;
-        }
-
-        setCreationOptions({ tvShows: [], seasons: [] });
-      }
-    };
-
-    void loadCreationOptions();
-
-    return () => {
-      isMounted = false;
-    };
+      setCreationOptions({ tvShows, seasons });
+    } catch {
+      setCreationOptions({ tvShows: [], seasons: [] });
+    }
   }, []);
+
+  useEffect(() => {
+    void loadCreationOptions();
+  }, [loadCreationOptions]);
 
   const loadAllRows = useCallback(async (filters: CatalogFilterValues) => {
     const requestId = ++latestRequestId.current;
@@ -181,40 +188,45 @@ export function useCatalogData() {
     createAssetType?: CatalogAssetCreationType,
   ) => {
     if (editingRow) {
-      const recommendedAge = parseRecommendedAge(values.recommendedAge);
+      const editingAssetType = mapAssetTypeToCreationType(editingRow.assetType);
+      const updatePayload = {
+        ...buildCreatePayload(editingAssetType, values),
+        "@key": editingRow.id,
+      };
 
-      await updateAsset({
-        "@assetType": editingRow.assetType,
-        title: values.title,
-        description: values.description,
-        recommendedAge,
-      });
+      await updateAsset(updatePayload);
 
       setRows((currentRows) =>
         currentRows.map((row) =>
           row.id === editingRow.id
             ? {
                 ...row,
-                cells: [values.title, "Serie", "Ativo"],
+                cells: [
+                  values.title ?? values.number ?? values.episodeNumber ?? row.cells[0],
+                  row.cells[1],
+                  "Ativo",
+                ],
                 values: {
                   ...row.values,
-                  title: values.title,
-                  description: values.description,
-                  recommendedAge: values.recommendedAge,
+                  ...Object.fromEntries(
+                    Object.entries(values).filter(([, value]) => value !== undefined),
+                  ),
                 },
               }
             : row,
         ),
       );
 
-      setStatusMessage(`Registro ${values.title} atualizado com sucesso.`);
-      return { mode: "updated" as const, title: values.title };
+      const recordLabel = getRecordLabel(values);
+      setStatusMessage(`Registro ${recordLabel} atualizado com sucesso.`);
+      return { mode: "updated" as const, title: recordLabel };
     }
 
     const assetType = createAssetType ?? "tvShows";
     const payload = buildCreatePayload(assetType, values);
 
     await createAsset(payload);
+    void loadCreationOptions();
 
     setRows((currentRows) => [
       {
@@ -235,19 +247,20 @@ export function useCatalogData() {
 
     setStatusMessage(`Registro ${values.title ?? values.number ?? values.episodeNumber} criado com sucesso na blockchain.`);
     return { mode: "created" as const, title: values.title };
-  }, []);
+  }, [loadCreationOptions]);
 
   const handleDelete = useCallback(async (row: CatalogRecord) => {
     await deleteAsset({
       "@assetType": row.assetType,
       title: row.values.title,
     });
+    void loadCreationOptions();
 
     setRows((currentRows) => currentRows.filter((currentRow) => currentRow.id !== row.id));
     setTotalRows((currentTotalRows) => Math.max(0, currentTotalRows - 1));
     setStatusMessage(`Registro ${row.values.title} removido com sucesso.`);
     return { title: row.values.title, id: row.id };
-  }, []);
+  }, [loadCreationOptions]);
 
   const setEditingStatusMessage = useCallback((title: string) => {
     setStatusMessage(`Editando o registro ${title}.`);
@@ -270,5 +283,6 @@ export function useCatalogData() {
     setEditingStatusMessage,
     setCreateStatusMessage,
     creationOptions,
+    refreshCreationOptions: loadCreationOptions,
   };
 }

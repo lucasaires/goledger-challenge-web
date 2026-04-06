@@ -17,7 +17,7 @@ export const catalogAssetCreationOptions: Array<{ label: string; value: CatalogA
 
 function optionFromRecord(record: Record<string, unknown>) {
   const title = String(record.title ?? record.name ?? record.id ?? "");
-  const key = String(record["@key"] ?? record.id ?? "");
+  const key = String(record["@key"] ?? record.key ?? record.title ?? record.id ?? record.number ?? "");
   const number = String(record.number ?? "");
 
   if (!key) {
@@ -25,12 +25,12 @@ function optionFromRecord(record: Record<string, unknown>) {
   }
 
   if (title) {
-    const label = number ? `${title} - temporada ${number} (${key})` : `${title} (${key})`;
+    const label = number ? `${title} - temporada ${number}` : title;
     return { label, value: key };
   }
 
   if (number) {
-    return { label: `Temporada ${number} (${key})`, value: key };
+    return { label: `Temporada ${number}`, value: key };
   }
 
   return { label: key, value: key };
@@ -73,10 +73,11 @@ export function buildCreateFields(
         placeholder: "Selecione a temporada",
         as: "select",
         options: options.seasons,
+        required: false,
       },
       { label: "Numero do episodio", name: "episodeNumber", placeholder: "Ex: 1", type: "number" },
       { label: "Titulo", name: "title", placeholder: "Digite o titulo" },
-      { label: "Data de lancamento", name: "releaseDate", placeholder: "Selecione a data", type: "date" },
+      { label: "Data de lancamento", name: "releaseDate", placeholder: "Selecione a data", type: "date", required: false },
       { label: "Descricao", name: "description", placeholder: "Digite a descricao", as: "textarea" },
       { label: "Avaliacao", name: "rating", placeholder: "Ex: 8.5", type: "number", required: false },
     ];
@@ -88,8 +89,9 @@ export function buildCreateFields(
     {
       label: "Series",
       name: "tvShowsKeys",
-      placeholder: "Informe os IDs das series separados por virgula",
-      as: "textarea",
+      placeholder: "Selecione as series",
+      as: "tag-select",
+      options: options.tvShows,
       required: false,
     },
   ];
@@ -130,15 +132,22 @@ export function buildCreatePayload(assetType: CatalogAssetCreationType, values: 
   }
 
   if (assetType === "episodes") {
+    const seasonKey = values.seasonKey?.trim();
+    const releaseDate = values.releaseDate?.trim();
+
     return {
       "@assetType": "episodes",
-      season: {
-        "@assetType": "seasons",
-        "@key": values.seasonKey,
-      },
+      ...(seasonKey
+        ? {
+            season: {
+              "@assetType": "seasons",
+              "@key": seasonKey,
+            },
+          }
+        : {}),
       episodeNumber: Number(values.episodeNumber),
       title: values.title,
-      releaseDate: normalizeReleaseDate(values.releaseDate),
+      ...(releaseDate ? { releaseDate: normalizeReleaseDate(releaseDate) } : {}),
       description: values.description,
       rating: values.rating ? Number(values.rating) : undefined,
     };
