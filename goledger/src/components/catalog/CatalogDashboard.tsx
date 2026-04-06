@@ -14,23 +14,11 @@ import { CatalogCreateFlowModals } from "./CatalogCreateFlowModals";
 import { CatalogDetailModal } from "./CatalogDetailModal";
 import {
   buildCreateFields,
-  catalogAssetCreationOptions,
   type CatalogAssetCreationType,
 } from "./catalog-create-forms";
+import { buildRelationshipLabelByKey, buildTableRows, getCreationTypeLabel, getRecordLabel } from "./catalog-dashboard-utils";
 
 const catalogColumns = ["Nome", "Categoria", "Status"];
-
-function getCreationTypeLabel(assetType: CatalogAssetCreationType | null) {
-  if (!assetType) {
-    return "registro";
-  }
-
-  return catalogAssetCreationOptions.find((option) => option.value === assetType)?.label ?? "registro";
-}
-
-function getRecordLabel(values: Record<string, string>) {
-  return values.title ?? values.number ?? values.episodeNumber ?? "registro";
-}
 
 export function CatalogDashboard() {
   const [editingRow, setEditingRow] = useState<CatalogRecord | null>(null);
@@ -77,33 +65,7 @@ export function CatalogDashboard() {
   const formLabel = isEditingMode ? "Atualizar" : "Salvar";
   const cancelLabel = isEditingMode ? "Cancelar" : "Limpar";
 
-  const tableRows = useMemo(() => {
-    const tvShowByKey = new Map(creationOptions.tvShows.map((option) => [option.value, option.label]));
-
-    return rows.map((row) => {
-      const bucket = row.assetType.toLowerCase();
-      const isSeason = bucket.includes("season") || bucket.includes("temporad");
-
-      if (!isSeason) {
-        return row;
-      }
-
-      const seasonNumber = row.values.number?.trim();
-      const relatedTitle = row.values.tvShowKey ? tvShowByKey.get(row.values.tvShowKey) : undefined;
-
-      if (!seasonNumber && !relatedTitle) {
-        return row;
-      }
-
-      const seasonLabel = seasonNumber ? `Temporada ${seasonNumber}` : "Temporada";
-      const nameLabel = relatedTitle ? `${relatedTitle} - ${seasonLabel}` : seasonLabel;
-
-      return {
-        ...row,
-        cells: [nameLabel, row.cells[1], row.cells[2]],
-      };
-    });
-  }, [creationOptions.tvShows, rows]);
+  const tableRows = useMemo(() => buildTableRows(rows, creationOptions.tvShows), [creationOptions.tvShows, rows]);
 
   const handleCreate = async (values: Record<string, string>) => {
     const recordLabel = getRecordLabel(values);
@@ -225,48 +187,10 @@ export function CatalogDashboard() {
     }
   };
 
-  const relationshipLabelByKey = useMemo(() => {
-    const labels = new Map<string, string>();
-
-    for (const option of creationOptions.tvShows) {
-      labels.set(option.value, option.label);
-    }
-
-    for (const option of creationOptions.seasons) {
-      labels.set(option.value, option.label);
-    }
-
-    return labels;
-  }, [creationOptions]);
-
-  const detailHeaderTitle = useMemo(() => {
-    if (!selectedRow) {
-      return "Registro";
-    }
-
-    const isSeason = selectedRow.assetType.toLowerCase().includes("season") || selectedRow.assetType.toLowerCase().includes("temporad");
-
-    if (!isSeason) {
-      return selectedRow.values.title ?? "Registro";
-    }
-
-    const relatedTitle = selectedRow.values.tvShowKey ? relationshipLabelByKey.get(selectedRow.values.tvShowKey) : undefined;
-    const seasonNumber = selectedRow.values.number?.trim();
-
-    if (relatedTitle && seasonNumber) {
-      return `${relatedTitle} - Temporada ${seasonNumber}`;
-    }
-
-    if (relatedTitle) {
-      return relatedTitle;
-    }
-
-    if (seasonNumber) {
-      return `Temporada ${seasonNumber}`;
-    }
-
-    return selectedRow.values.title ?? "Registro";
-  }, [relationshipLabelByKey, selectedRow]);
+  const relationshipLabelByKey = useMemo(
+    () => buildRelationshipLabelByKey(creationOptions),
+    [creationOptions],
+  );
 
   return (
     <div className={styles.page}>
@@ -329,7 +253,6 @@ export function CatalogDashboard() {
       <CatalogDetailModal
         selectedRow={selectedRow}
         relationshipLabelByKey={relationshipLabelByKey}
-        detailHeaderTitle={detailHeaderTitle}
         onClose={handleCloseDetailsModal}
       />
 

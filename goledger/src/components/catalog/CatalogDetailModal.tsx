@@ -3,122 +3,37 @@
 import { useCallback, useMemo } from "react";
 import Modal from "react-modal";
 import { X } from "lucide-react";
-import { format, isValid, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import styles from "./catalog-shell.module.scss";
 import type { CatalogRecord } from "@/lib/goledger";
-
-type RelationshipLabelMap = Map<string, string>;
+import {
+  buildDetailEntries,
+  buildDetailHeaderTitle,
+  buildDetailMeta,
+  formatDetailKey,
+  formatDetailValue,
+} from "./catalog-detail-utils";
 
 type CatalogDetailModalProps = {
   selectedRow: CatalogRecord | null;
-  relationshipLabelByKey: RelationshipLabelMap;
-  detailHeaderTitle: string;
+  relationshipLabelByKey: Map<string, string>;
   onClose: () => void;
 };
-
-const detailLabelByKey: Record<string, string> = {
-  title: "Titulo",
-  description: "Descricao",
-  recommendedAge: "Idade recomendada",
-  number: "Numero",
-  tvShowKey: "Serie",
-  seasonKey: "Temporada",
-  seasonNumber: "Numero da temporada",
-  episodeNumber: "Numero do episodio",
-  rating: "Avaliacao",
-  releaseDate: "Data de lancamento",
-  year: "Ano",
-  tvShowsKeys: "Series",
-};
-
-function formatDetailKey(key: string) {
-  if (detailLabelByKey[key]) {
-    return detailLabelByKey[key];
-  }
-
-  return key
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .replace(/^./, (char) => char.toUpperCase());
-}
-
-function formatDetailValue(key: string, value: string) {
-  if (key === "releaseDate") {
-    const parsedDate = parseISO(value);
-
-    if (isValid(parsedDate)) {
-      return format(parsedDate, "dd/MM/yyyy 'as' HH:mm", { locale: ptBR });
-    }
-  }
-
-  if (key === "recommendedAge") {
-    return `${value} anos`;
-  }
-
-  return value;
-}
 
 export function CatalogDetailModal({
   selectedRow,
   relationshipLabelByKey,
-  detailHeaderTitle,
   onClose,
 }: CatalogDetailModalProps) {
+  const detailHeaderTitle = useMemo(
+    () => buildDetailHeaderTitle(selectedRow, relationshipLabelByKey),
+    [relationshipLabelByKey, selectedRow],
+  );
+
   const detailEntries = useMemo(() => {
     if (!selectedRow) {
       return [] as Array<[string, string]>;
     }
-
-    const priority = [
-      "title",
-      "description",
-      "recommendedAge",
-      "number",
-      "seasonNumber",
-      "episodeNumber",
-      "rating",
-      "releaseDate",
-      "year",
-    ];
-
-    const entries = Object.entries(selectedRow.values)
-      .filter(([, value]) => value.trim().length > 0)
-      .filter(([key]) => key !== "tvShows")
-      .sort(([leftKey], [rightKey]) => {
-        const leftIndex = priority.indexOf(leftKey);
-        const rightIndex = priority.indexOf(rightKey);
-
-        if (leftIndex === -1 && rightIndex === -1) {
-          return leftKey.localeCompare(rightKey);
-        }
-
-        if (leftIndex === -1) {
-          return 1;
-        }
-
-        if (rightIndex === -1) {
-          return -1;
-        }
-
-        return leftIndex - rightIndex;
-      });
-
-    const watchlistSeries = selectedRow.values.tvShowsKeys?.trim();
-
-    if (watchlistSeries) {
-      const seriesLabel = watchlistSeries
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .map((item) => relationshipLabelByKey.get(item) ?? item)
-        .join(", ");
-
-      const filteredEntries = entries.filter(([key]) => key !== "tvShowsKeys");
-      return [["tvShowsKeys", seriesLabel], ...filteredEntries];
-    }
-
-    return entries;
+    return buildDetailEntries(selectedRow, relationshipLabelByKey);
   }, [relationshipLabelByKey, selectedRow]);
 
   const formatEntryValue = useCallback((key: string, value: string) => {
@@ -146,18 +61,7 @@ export function CatalogDetailModal({
     if (!selectedRow) {
       return [] as string[];
     }
-
-    const isSeason = selectedRow.assetType.toLowerCase().includes("season") || selectedRow.assetType.toLowerCase().includes("temporad");
-
-    if (isSeason) {
-      return [
-        selectedRow.values.tvShowKey ? relationshipLabelByKey.get(selectedRow.values.tvShowKey) ?? "Serie" : "Serie",
-        selectedRow.values.number ? `Temporada ${selectedRow.values.number}` : "Temporada",
-        selectedRow.cells[2] ?? "-",
-      ];
-    }
-
-    return [selectedRow.assetType ?? "-", selectedRow.cells[2] ?? "-"];
+    return buildDetailMeta(selectedRow, relationshipLabelByKey);
   }, [relationshipLabelByKey, selectedRow]);
 
   return (

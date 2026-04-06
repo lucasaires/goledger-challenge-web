@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createAsset, deleteAsset, searchAssets, updateAsset } from "@/lib/goledger";
 import {
   buildCatalogSearchSelector,
-  classifyAssetType,
   filterRowsByTerm,
   mapCategoryToAssetType,
   normalizeRows,
@@ -15,32 +14,15 @@ import {
 import { optionFromRecord, type CatalogAssetOption } from "./catalog-option-utils";
 import type { CatalogRecord } from "@/lib/goledger";
 import type { CatalogFilterValues } from "@/components/catalog/FilterBar";
-
-export type CatalogFormValues = Record<string, string>;
-
-const DEFAULT_ROWS_PER_PAGE = 10;
-
-function mapAssetTypeToCreationType(assetType: string): CatalogAssetCreationType {
-  const bucket = classifyAssetType(assetType);
-
-  if (bucket === "series") {
-    return "tvShows";
-  }
-
-  if (bucket === "season") {
-    return "seasons";
-  }
-
-  if (bucket === "episode") {
-    return "episodes";
-  }
-
-  return "watchlist";
-}
-
-function getRecordLabel(values: CatalogFormValues) {
-  return values.title ?? values.number ?? values.episodeNumber ?? "registro";
-}
+import {
+  buildCreatedRow,
+  buildPageStats,
+  buildUpdatedRows,
+  DEFAULT_ROWS_PER_PAGE,
+  getRecordLabel,
+  mapAssetTypeToCreationType,
+  type CatalogFormValues,
+} from "./catalog-data-utils";
 
 export function useCatalogData() {
   const [rows, setRows] = useState<CatalogRecord[]>([]);
@@ -57,39 +39,7 @@ export function useCatalogData() {
   });
   const latestRequestId = useRef(0);
 
-  const stats = useMemo(() => {
-    let pageSeries = 0;
-    let pageSeasons = 0;
-    let pageEpisodes = 0;
-    let pageWatchlists = 0;
-
-    for (const row of rows) {
-      const bucket = classifyAssetType(row.assetType);
-
-      if (bucket === "series") {
-        pageSeries += 1;
-      }
-
-      if (bucket === "season") {
-        pageSeasons += 1;
-      }
-
-      if (bucket === "episode") {
-        pageEpisodes += 1;
-      }
-
-      if (bucket === "watchlist") {
-        pageWatchlists += 1;
-      }
-    }
-
-    return [
-      { label: "Series", value: pageSeries },
-      { label: "Temporadas", value: pageSeasons },
-      { label: "Episodios", value: pageEpisodes },
-      { label: "Watchlists", value: pageWatchlists },
-    ];
-  }, [rows]);
+  const stats = useMemo(() => buildPageStats(rows), [rows]);
 
   const tvShowLabelByKey = useMemo(
     () => new Map(creationOptions.tvShows.map((option) => [option.value, option.label])),
@@ -193,26 +143,7 @@ export function useCatalogData() {
 
       await updateAsset(updatePayload);
 
-      setRows((currentRows) =>
-        currentRows.map((row) =>
-          row.id === editingRow.id
-            ? {
-                ...row,
-                cells: [
-                  values.title ?? values.number ?? values.episodeNumber ?? row.cells[0],
-                  row.cells[1],
-                  "Ativo",
-                ],
-                values: {
-                  ...row.values,
-                  ...Object.fromEntries(
-                    Object.entries(values).filter(([, value]) => value !== undefined),
-                  ),
-                },
-              }
-            : row,
-        ),
-      );
+      setRows((currentRows) => buildUpdatedRows(currentRows, editingRow.id, values));
 
       const recordLabel = getRecordLabel(values);
       setStatusMessage(`Registro ${recordLabel} atualizado com sucesso.`);
@@ -225,21 +156,7 @@ export function useCatalogData() {
     await createAsset(payload);
     void loadCreationOptions();
 
-    setRows((currentRows) => [
-      {
-        id: `${assetType}:${values.title ?? values.number ?? values.episodeNumber ?? Date.now()}`,
-        assetType,
-        cells: [
-          values.title ?? values.number ?? values.episodeNumber ?? "-",
-          assetType,
-          "Ativo",
-        ],
-        values: Object.fromEntries(
-          Object.entries(values).filter(([, value]) => value !== undefined),
-        ) as Record<string, string>,
-      },
-      ...currentRows,
-    ]);
+    setRows((currentRows) => [buildCreatedRow(assetType, values), ...currentRows]);
     setTotalRows((currentTotalRows) => currentTotalRows + 1);
 
     setStatusMessage(`Registro ${values.title ?? values.number ?? values.episodeNumber} criado com sucesso na blockchain.`);

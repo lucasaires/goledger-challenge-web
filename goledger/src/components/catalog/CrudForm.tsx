@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { useMemo, useState } from "react";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import styles from "./crud-form.module.scss";
+import { CrudFormField } from "./CrudFormField";
 
 export type Field = {
   label: string;
@@ -55,11 +56,6 @@ export function CrudForm({
   onSubmit,
   onCancel,
 }: CrudFormProps) {
-  const schema = useMemo(() => buildSchema(fields), [fields]);
-  const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
-  const [openSearchField, setOpenSearchField] = useState<string | null>(null);
-  const [pendingTagSelection, setPendingTagSelection] = useState<Record<string, string>>({});
-
   const defaultValues = useMemo(
     () =>
       fields.reduce<CrudFormValues>((accumulator, field) => {
@@ -69,12 +65,49 @@ export function CrudForm({
     [fields],
   );
 
+  const formKey = useMemo(
+    () => JSON.stringify({ fields: fields.map((field) => field.name), initialValues: initialValues ?? defaultValues }),
+    [defaultValues, fields, initialValues],
+  );
+
+  return (
+    <CrudFormInner
+      key={formKey}
+      title={title}
+      description={description}
+      fields={fields}
+      initialValues={initialValues}
+      submitLabel={submitLabel}
+      cancelLabel={cancelLabel}
+      onSubmit={onSubmit}
+      onCancel={onCancel}
+      defaultValues={defaultValues}
+    />
+  );
+}
+
+function CrudFormInner({
+  title,
+  description,
+  fields,
+  initialValues,
+  submitLabel = "Salvar",
+  cancelLabel = "Limpar",
+  onSubmit,
+  onCancel,
+  defaultValues,
+}: CrudFormProps & { defaultValues: CrudFormValues }) {
+  const schema = useMemo(() => buildSchema(fields), [fields]);
+  const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
+  const [openSearchField, setOpenSearchField] = useState<string | null>(null);
+  const [pendingTagSelection, setPendingTagSelection] = useState<Record<string, string>>({});
+
   const {
+    control,
     register,
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<CrudFormValues>({
     resolver: zodResolver(schema) as Resolver<CrudFormValues>,
@@ -82,17 +115,12 @@ export function CrudForm({
     mode: "onTouched",
   });
 
-  useEffect(() => {
-    reset(initialValues ?? defaultValues);
-    setSearchQueries({});
-    setOpenSearchField(null);
-    setPendingTagSelection({});
-  }, [defaultValues, initialValues, reset]);
-
   const submitForm = handleSubmit(async (values) => {
     await onSubmit?.(values);
     reset(defaultValues);
   });
+
+  const watchedValues = useWatch({ control });
 
   return (
     <section className={styles.formCard} aria-label={title}>
@@ -103,8 +131,7 @@ export function CrudForm({
 
       <form className={styles.form} onSubmit={submitForm} noValidate>
         {fields.map((field) => {
-          const fieldError = errors[field.name];
-          const selectedValue = watch(field.name);
+          const selectedValue = watchedValues[field.name];
           const normalizedSelectedValue = typeof selectedValue === "string" ? selectedValue : "";
           const selectedOption = field.options?.find((option) => option.value === normalizedSelectedValue);
           const searchValue = searchQueries[field.name] ?? "";
@@ -125,154 +152,58 @@ export function CrudForm({
 
             return option.label.toLowerCase().includes(query) || option.value.toLowerCase().includes(query);
           }) ?? [];
-          const inputId = field.as === "search-select" ? `${field.name}-search` : field.name;
 
           return (
-            <label key={field.name} htmlFor={inputId}>
-              <span>{field.label}</span>
-              {field.as === "textarea" ? (
-                <textarea
-                  id={field.name}
-                  placeholder={field.placeholder}
-                  rows={4}
-                  readOnly={field.readOnly}
-                  {...register(field.name)}
-                />
-              ) : field.as === "search-select" ? (
-                <div className={styles.searchSelect}>
-                  <input
-                    id={`${field.name}-search`}
-                    placeholder={field.placeholder}
-                    type="text"
-                    value={searchValue || selectedOption?.label || ""}
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
-                      setOpenSearchField(field.name);
-                      setSearchQueries((current) => ({ ...current, [field.name]: nextValue }));
-                    }}
-                    onFocus={() => {
-                      setOpenSearchField(field.name);
-                      setSearchQueries((current) => ({
-                        ...current,
-                        [field.name]: current[field.name] ?? selectedOption?.label ?? "",
-                      }));
-                    }}
-                    onBlur={() => {
-                      window.setTimeout(() => {
-                        setOpenSearchField((current) => (current === field.name ? null : current));
-                      }, 120);
-                    }}
-                    readOnly={field.readOnly}
-                    autoComplete="off"
-                  />
-                  <input type="hidden" {...register(field.name)} />
-                  {isSearchOpen && filteredOptions.length > 0 ? (
-                    <div className={styles.searchSelectOptions} role="listbox" aria-label={field.label}>
-                      {filteredOptions.slice(0, 8).map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          className={styles.searchSelectOption}
-                          onClick={() => {
-                            setValue(field.name, option.value, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-                            setSearchQueries((current) => ({ ...current, [field.name]: option.label }));
-                            setOpenSearchField(null);
-                          }}
-                        >
-                          <span>{option.label}</span>
-                          <small>{option.value}</small>
-                        </button>
-                      ))}
-                    </div>
-                  ) : searchValue ? (
-                    <div className={styles.searchSelectEmpty}>Nenhum resultado encontrado.</div>
-                  ) : null}
-                </div>
-              ) : field.as === "select" ? (
-                <select
-                  id={field.name}
-                  disabled={field.readOnly}
-                  {...register(field.name)}
-                >
-                  <option value="">Selecione</option>
-                  {field.options?.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              ) : field.as === "tag-select" ? (
-                <div className={styles.tagSelect}>
-                  <div className={styles.tagSelectControls}>
-                    <select
-                      id={field.name}
-                      value={pendingTag}
-                      disabled={field.readOnly || availableTagOptions.length === 0}
-                      onChange={(event) => {
-                        setPendingTagSelection((current) => ({ ...current, [field.name]: event.target.value }));
-                      }}
-                    >
-                      <option value="">Selecione uma serie</option>
-                      {availableTagOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className={styles.tagAddButton}
-                      disabled={field.readOnly || !pendingTag}
-                      onClick={() => {
-                        if (!pendingTag) {
-                          return;
-                        }
+            <CrudFormField
+              key={field.name}
+              field={field}
+              register={register}
+              errors={errors}
+              searchValue={searchValue}
+              isSearchOpen={isSearchOpen}
+              selectedOptionLabel={selectedOption?.label}
+              filteredOptions={filteredOptions}
+              pendingTag={pendingTag}
+              selectedTags={selectedTags}
+              availableTagOptions={availableTagOptions}
+              onSearchChange={(value) => {
+                setOpenSearchField(field.name);
+                setSearchQueries((current) => ({ ...current, [field.name]: value }));
+              }}
+              onSearchFocus={() => {
+                setOpenSearchField(field.name);
+                setSearchQueries((current) => ({
+                  ...current,
+                  [field.name]: current[field.name] ?? selectedOption?.label ?? "",
+                }));
+              }}
+              onSearchBlur={() => {
+                window.setTimeout(() => {
+                  setOpenSearchField((current) => (current === field.name ? null : current));
+                }, 120);
+              }}
+              onPickSearchOption={(option) => {
+                setValue(field.name, option.value, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+                setSearchQueries((current) => ({ ...current, [field.name]: option.label }));
+                setOpenSearchField(null);
+              }}
+              onChangePendingTag={(value) => {
+                setPendingTagSelection((current) => ({ ...current, [field.name]: value }));
+              }}
+              onAddTag={() => {
+                if (!pendingTag) {
+                  return;
+                }
 
-                        const nextKeys = [...selectedTagKeys, pendingTag];
-                        setValue(field.name, nextKeys.join(","), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-                        setPendingTagSelection((current) => ({ ...current, [field.name]: "" }));
-                      }}
-                    >
-                      Adicionar
-                    </button>
-                  </div>
-
-                  <input type="hidden" {...register(field.name)} />
-
-                  {selectedTags.length > 0 ? (
-                    <div className={styles.tagList}>
-                      {selectedTags.map((tag) => (
-                        <span key={tag.value} className={styles.tagItem}>
-                          <span>{tag.label}</span>
-                          <button
-                            type="button"
-                            disabled={field.readOnly}
-                            aria-label={`Remover ${tag.label}`}
-                            onClick={() => {
-                              const nextKeys = selectedTagKeys.filter((key) => key !== tag.value);
-                              setValue(field.name, nextKeys.join(","), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
-                            }}
-                          >
-                            x
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className={styles.tagHint}>Nenhuma serie selecionada.</p>
-                  )}
-                </div>
-              ) : (
-                <input
-                  id={field.name}
-                  placeholder={field.placeholder}
-                  type={field.type ?? "text"}
-                  readOnly={field.readOnly}
-                  {...register(field.name)}
-                />
-              )}
-              {fieldError ? <small>{fieldError.message}</small> : null}
-            </label>
+                const nextKeys = [...selectedTagKeys, pendingTag];
+                setValue(field.name, nextKeys.join(","), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+                setPendingTagSelection((current) => ({ ...current, [field.name]: "" }));
+              }}
+              onRemoveTag={(tagValue) => {
+                const nextKeys = selectedTagKeys.filter((key) => key !== tagValue);
+                setValue(field.name, nextKeys.join(","), { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+              }}
+            />
           );
         })}
 
